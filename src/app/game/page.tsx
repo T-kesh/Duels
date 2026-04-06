@@ -9,7 +9,7 @@ import { initGameState, resolveTurn, GameState } from "@/lib/gameEngine";
 type Phase = "draw" | "pick" | "resolve" | "done";
 
 export default function GamePage() {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const router = useRouter();
 
   useEffect(() => {
@@ -59,10 +59,20 @@ export default function GamePage() {
       setUsedCardIds((prev) => new Set([...prev, playerCard.id]));
 
       if (newState.isOver) {
-        setTimeout(() => {
-          router.push(`/result?won=${newState.playerWon}&playerHp=${newState.playerHp}&aiHp=${newState.aiHp}`);
-        }, 1800);
-      } else {
+  // Update win streak
+  if (newState.playerWon) {
+    const streak = parseInt(localStorage.getItem('duel_streak') || '0') + 1;
+    localStorage.setItem('duel_streak', streak.toString());
+    const best = parseInt(localStorage.getItem('duel_best_streak') || '0');
+    if (streak > best) localStorage.setItem('duel_best_streak', streak.toString());
+  } else {
+    localStorage.setItem('duel_streak', '0');
+  }
+
+  setTimeout(() => {
+    router.push(`/result?won=${newState.playerWon}&playerHp=${newState.playerHp}&aiHp=${newState.aiHp}`);
+  }, 1800);
+} else {
         setTimeout(() => {
           setAiCard(null);
           setSelectedCard(null);
@@ -124,6 +134,9 @@ export default function GamePage() {
             +{card.shield}DEF
           </span>
         )}
+        <span style={{ fontSize: "9px", color: "#555", textAlign: "center", marginTop: "2px", lineHeight: "1.3" }}>
+  {card.description}
+</span>
       </div>
     </button>
   );
