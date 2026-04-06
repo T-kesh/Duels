@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
 import { ConnectButton } from "@/components/connect-button";
@@ -7,6 +8,12 @@ import { ConnectButton } from "@/components/connect-button";
 export default function Home() {
   const { isConnected } = useAccount();
   const router = useRouter();
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    const s = parseInt(localStorage.getItem('duel_streak') || '0');
+    setStreak(s);
+  }, []);
 
   return (
     <main
@@ -44,9 +51,28 @@ export default function Home() {
           DUEL
         </h1>
 
-        <p style={{ fontSize: "11px", color: "#666", letterSpacing: "4px", textTransform: "uppercase", marginBottom: "40px" }}>
+        <p style={{ fontSize: "11px", color: "#666", letterSpacing: "4px", textTransform: "uppercase", marginBottom: "16px" }}>
           AI Card Battle · Earn cUSD
         </p>
+
+        {streak > 0 && (
+          <div style={{
+            background: "rgba(252,196,25,0.08)",
+            border: "1px solid rgba(252,196,25,0.2)",
+            borderRadius: "10px",
+            padding: "10px 16px",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+          }}>
+            <span style={{ fontSize: "18px" }}>🔥</span>
+            <span style={{ fontSize: "12px", color: "#fcc419", letterSpacing: "2px", fontWeight: "700" }}>
+              {streak} WIN STREAK
+            </span>
+          </div>
+        )}
 
         <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(252,196,25,0.15)", borderRadius: "12px", padding: "20px", marginBottom: "32px", textAlign: "left" }}>
           <p style={{ fontSize: "10px", color: "#fcc419", letterSpacing: "3px", marginBottom: "12px" }}>HOW TO PLAY</p>
