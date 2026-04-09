@@ -49,9 +49,9 @@ export default function GamePage() {
 
       // Call claimReward on the contract
       const { writeContract } = await import("wagmi/actions");
-      const { getConfig } = await import("@/lib/wagmi"); // adjust to your wagmi config path
+      const { config } = await import("@/lib/wagmi"); // adjust to your wagmi config path
 
-      await writeContract(getConfig(), {
+      await writeContract(config, {
         address: CONTRACT_ADDRESS,
         abi: [
           {
