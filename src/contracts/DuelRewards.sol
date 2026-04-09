@@ -7,32 +7,49 @@ interface IERC20 {
 }
 
 contract DuelRewards {
+
+    // ─── State ───────────────────────────────────────────────────────────────
+
     address public owner;
     address public treasury;
-    IERC20 public cusd;
+    IERC20 public immutable cusd;
 
     uint256 public rewardAmount = 0.05 ether;
     uint256 public dailyClaimLimit = 5;
-    uint256 public protocolFeePercent = 10; // 10% to treasury
+    uint256 public protocolFeePercent = 10;
 
-    // Daily claim tracking
     mapping(address => mapping(uint256 => uint256)) public dailyClaims;
-
-    // Replay protection
     mapping(bytes32 => bool) public usedNonces;
 
-    // Onchain leaderboard
     mapping(address => uint256) public totalWins;
-    address[] public players;
     mapping(address => bool) public isPlayer;
+    address[] public players;
+
+    // ─── Errors ──────────────────────────────────────────────────────────────
+
+    error NotOwner();
+    error AlreadyClaimed();
+    error InvalidSignature();
+    error InvalidSignatureLength();
+    error DailyLimitReached();
+    error PoolEmpty();
+    error TransferFailed();
+    error FeeTooHigh();
+
+    // ─── Events ──────────────────────────────────────────────────────────────
 
     event RewardClaimed(address indexed player, uint256 playerAmount, uint256 fee);
     event PoolToppedUp(uint256 amount);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    // ─── Modifiers ───────────────────────────────────────────────────────────
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
+        if (msg.sender != owner) revert NotOwner();
         _;
     }
+
+    // ─── Constructor ─────────────────────────────────────────────────────────
 
     constructor(address _cusd, address _treasury) {
         owner = msg.sender;
@@ -40,59 +57,51 @@ contract DuelRewards {
         cusd = IERC20(_cusd);
     }
 
-    function claimReward(bytes32 nonce, bytes memory signature) external {
-        // Replay protection
-        require(!usedNonces[nonce], "Already claimed");
+    // ─── External ────────────────────────────────────────────────────────────
 
-        // Verify owner signed this claim
+    function claimReward(bytes32 nonce, bytes memory signature) external {
+        if (usedNonces[nonce]) revert AlreadyClaimed();
+
         bytes32 message = keccak256(abi.encodePacked(msg.sender, nonce));
         bytes32 ethSigned = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
-        require(_recoverSigner(ethSigned, signature) == owner, "Invalid signature");
+        if (_recoverSigner(ethSigned, signature) != owner) revert InvalidSignature();
 
-        // Daily limit
         uint256 today = block.timestamp / 1 days;
-        require(dailyClaims[msg.sender][today] < dailyClaimLimit, "Daily limit reached");
+        if (dailyClaims[msg.sender][today] >= dailyClaimLimit) revert DailyLimitReached();
 
-        // Pool check
         uint256 fee = (rewardAmount * protocolFeePercent) / 100;
         uint256 playerAmount = rewardAmount - fee;
-        require(cusd.balanceOf(address(this)) >= rewardAmount, "Pool empty");
+        if (cusd.balanceOf(address(this)) < rewardAmount) revert PoolEmpty();
 
-        // Mark used
+        // CEI: all state updates before transfers
         usedNonces[nonce] = true;
         dailyClaims[msg.sender][today]++;
-
-        // Track wins for leaderboard
+        totalWins[msg.sender]++;
         if (!isPlayer[msg.sender]) {
             players.push(msg.sender);
             isPlayer[msg.sender] = true;
         }
-        totalWins[msg.sender]++;
 
-        // Pay player and treasury
-        require(cusd.transfer(msg.sender, playerAmount), "Player transfer failed");
-        require(cusd.transfer(treasury, fee), "Fee transfer failed");
+        if (!cusd.transfer(msg.sender, playerAmount)) revert TransferFailed();
+        if (!cusd.transfer(treasury, fee)) revert TransferFailed();
 
         emit RewardClaimed(msg.sender, playerAmount, fee);
     }
 
-    // Read leaderboard — returns top 10 players and their wins
+    /// @notice Returns top 10 players sorted by wins. O(n²) — acceptable at MVP scale.
     function getLeaderboard() external view returns (address[] memory addrs, uint256[] memory wins) {
-        uint256 count = players.length > 10 ? 10 : players.length;
-        addrs = new address[](count);
-        wins = new uint256[](count);
+        uint256 total = players.length;
+        uint256 count = total > 10 ? 10 : total;
 
-        // Copy players array
-        address[] memory allPlayers = new address[](players.length);
-        uint256[] memory allWins = new uint256[](players.length);
-        for (uint256 i = 0; i < players.length; i++) {
+        address[] memory allPlayers = new address[](total);
+        uint256[] memory allWins = new uint256[](total);
+        for (uint256 i; i < total; ++i) {
             allPlayers[i] = players[i];
             allWins[i] = totalWins[players[i]];
         }
 
-        // Simple bubble sort (fine for small arrays at MVP scale)
-        for (uint256 i = 0; i < allPlayers.length; i++) {
-            for (uint256 j = i + 1; j < allPlayers.length; j++) {
+        for (uint256 i; i < total; ++i) {
+            for (uint256 j = i + 1; j < total; ++j) {
                 if (allWins[j] > allWins[i]) {
                     (allWins[i], allWins[j]) = (allWins[j], allWins[i]);
                     (allPlayers[i], allPlayers[j]) = (allPlayers[j], allPlayers[i]);
@@ -100,7 +109,9 @@ contract DuelRewards {
             }
         }
 
-        for (uint256 i = 0; i < count; i++) {
+        addrs = new address[](count);
+        wins = new uint256[](count);
+        for (uint256 i; i < count; ++i) {
             addrs[i] = allPlayers[i];
             wins[i] = allWins[i];
         }
@@ -108,6 +119,13 @@ contract DuelRewards {
 
     function poolBalance() external view returns (uint256) {
         return cusd.balanceOf(address(this));
+    }
+
+    // ─── Owner ───────────────────────────────────────────────────────────────
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
     }
 
     function setRewardAmount(uint256 _amount) external onlyOwner {
@@ -119,7 +137,7 @@ contract DuelRewards {
     }
 
     function setProtocolFee(uint256 _percent) external onlyOwner {
-        require(_percent <= 30, "Max 30%");
+        if (_percent > 30) revert FeeTooHigh();
         protocolFeePercent = _percent;
     }
 
@@ -128,11 +146,13 @@ contract DuelRewards {
     }
 
     function withdrawPool(uint256 amount) external onlyOwner {
-        require(cusd.transfer(owner, amount), "Transfer failed");
+        if (!cusd.transfer(owner, amount)) revert TransferFailed();
     }
 
+    // ─── Internal ────────────────────────────────────────────────────────────
+
     function _recoverSigner(bytes32 ethSignedMessageHash, bytes memory signature) internal pure returns (address) {
-        require(signature.length == 65, "Invalid sig length");
+        if (signature.length != 65) revert InvalidSignatureLength();
         bytes32 r;
         bytes32 s;
         uint8 v;
