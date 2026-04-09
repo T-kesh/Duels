@@ -21,7 +21,11 @@ export default function GamePage() {
     }
   }, [isConnected, router]);
 
-  const [hand] = useState<Card[]>(drawHand);
+  const [hand, setHand] = useState<Card[]>([]);
+
+  useEffect(() => {
+  setHand(drawHand());
+  }, []);
   const [gameState, setGameState] = useState<GameState>(initGameState);
   const [phase, setPhase] = useState<Phase>("draw");
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
