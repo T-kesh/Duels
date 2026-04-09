@@ -12,6 +12,11 @@ module.exports = {
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
       chainId: 44787,
     },
+    celoSepolia: {
+      url: "https://forno.celo-sepolia.celo-testnet.org",
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+      chainId: 11142220,
+    },
     celo: {
       url: "https://forno.celo.org",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],

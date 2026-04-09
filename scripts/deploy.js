@@ -9,10 +9,10 @@ async function main() {
 
   console.log("Deploying contracts with the account:", deployer.address);
 
-  // Celo Alfajores Testnet cUSD address
-  const testnetCUSD = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1";
-  
-  // We use the deployer as the treasury for the testnet deployment
+  // Celo Sepolia Testnet cUSD address (same as mainnet)
+  const testnetCUSD = "0x765DE816845861e75A25fCA122bb6898B8B1282a";
+
+  // Using deployer as treasury for testnet deployment
   const treasury = deployer.address;
 
   console.log(`Using cUSD Address: ${testnetCUSD}`);
