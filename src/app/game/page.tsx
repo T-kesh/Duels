@@ -2,14 +2,17 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useAccount, useWalletClient } from "wagmi";
 import { drawHand, Card } from "@/constants/cards";
 import { initGameState, resolveTurn, GameState } from "@/lib/gameEngine";
 
 type Phase = "draw" | "pick" | "resolve" | "done";
 
+import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
+
 export default function GamePage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const router = useRouter();
 
   useEffect(() => {
@@ -18,7 +21,11 @@ export default function GamePage() {
     }
   }, [isConnected, router]);
 
-  const [hand] = useState<Card[]>(drawHand);
+  const [hand, setHand] = useState<Card[]>([]);
+
+  useEffect(() => {
+  setHand(drawHand());
+  }, []);
   const [gameState, setGameState] = useState<GameState>(initGameState);
   const [phase, setPhase] = useState<Phase>("draw");
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
@@ -26,6 +33,41 @@ export default function GamePage() {
   const [aiReasoning, setAiReasoning] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [usedCardIds, setUsedCardIds] = useState<Set<string>>(new Set());
+  const [claimStatus, setClaimStatus] = useState<"idle" | "claiming" | "claimed" | "failed">("idle");
+
+  const claimReward = useCallback(async () => {
+    if (!address || !walletClient) return;
+    setClaimStatus("claiming");
+
+    try {
+      // Ask your backend to sign a reward for this player
+      const res = await fetch("/api/claim-rewards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerAddress: address }),
+      });
+
+      if (!res.ok) throw new Error("Failed to get reward signature");
+
+      const { nonce, signature } = await res.json();
+
+      // Call claimReward on the contract
+      const { writeContract } = await import("wagmi/actions");
+      const { config } = await import("@/lib/wagmi"); // adjust to your wagmi config path
+
+      await writeContract(config, {
+        address: DUEL_REWARDS_ADDRESS,
+        abi: DUEL_REWARDS_ABI,
+        functionName: "claimReward",
+        args: [nonce, signature],
+      });
+
+      setClaimStatus("claimed");
+    } catch (err) {
+      console.error("Claim failed:", err);
+      setClaimStatus("failed");
+    }
+  }, [address, walletClient]);
 
   const playTurn = useCallback(async (playerCard: Card) => {
     if (isLoading || usedCardIds.has(playerCard.id)) return;
@@ -59,20 +101,26 @@ export default function GamePage() {
       setUsedCardIds((prev) => new Set([...prev, playerCard.id]));
 
       if (newState.isOver) {
-  // Update win streak
-  if (newState.playerWon) {
-    const streak = parseInt(localStorage.getItem('duel_streak') || '0') + 1;
-    localStorage.setItem('duel_streak', streak.toString());
-    const best = parseInt(localStorage.getItem('duel_best_streak') || '0');
-    if (streak > best) localStorage.setItem('duel_best_streak', streak.toString());
-  } else {
-    localStorage.setItem('duel_streak', '0');
-  }
+        // Update win streak
+        if (newState.playerWon) {
+          const streak = parseInt(localStorage.getItem('duel_streak') || '0') + 1;
+          localStorage.setItem('duel_streak', streak.toString());
+          const best = parseInt(localStorage.getItem('duel_best_streak') || '0');
+          if (streak > best) localStorage.setItem('duel_best_streak', streak.toString());
+          // Update total wins
+          const totalWins = parseInt(localStorage.getItem('duel_total_wins') || '0') + 1;
+          localStorage.setItem('duel_total_wins', totalWins.toString());
 
-  setTimeout(() => {
-    router.push(`/result?won=${newState.playerWon}&playerHp=${newState.playerHp}&aiHp=${newState.aiHp}`);
-  }, 1800);
-} else {
+          // Trigger reward claim in background — don't block navigation
+          claimReward();
+        } else {
+          localStorage.setItem('duel_streak', '0');
+        }
+
+        setTimeout(() => {
+          router.push(`/result?won=${newState.playerWon}&playerHp=${newState.playerHp}&aiHp=${newState.aiHp}`);
+        }, 1800);
+      } else {
         setTimeout(() => {
           setAiCard(null);
           setSelectedCard(null);
@@ -86,7 +134,7 @@ export default function GamePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, usedCardIds, gameState, router]);
+  }, [isLoading, usedCardIds, gameState, router, claimReward]);
 
   const hpColor = (hp: number) =>
     hp > 60 ? "#35d46a" : hp > 30 ? "#fcc419" : "#ff4d4f";
@@ -135,8 +183,8 @@ export default function GamePage() {
           </span>
         )}
         <span style={{ fontSize: "9px", color: "#555", textAlign: "center", marginTop: "2px", lineHeight: "1.3" }}>
-  {card.description}
-</span>
+          {card.description}
+        </span>
       </div>
     </button>
   );
@@ -155,6 +203,23 @@ export default function GamePage() {
         <div style={{ width: "1px", background: "#222" }} />
         <HpBar hp={gameState.aiHp} label="CIPHER" />
       </div>
+
+      {/* Claim status indicator — only shows when a claim is in progress */}
+      {claimStatus === "claiming" && (
+        <div style={{ textAlign: "center", marginBottom: "12px", fontSize: "10px", color: "#fcc419", letterSpacing: "2px" }}>
+          ⏳ CLAIMING REWARD...
+        </div>
+      )}
+      {claimStatus === "claimed" && (
+        <div style={{ textAlign: "center", marginBottom: "12px", fontSize: "10px", color: "#35d46a", letterSpacing: "2px" }}>
+          ✓ REWARD CLAIMED
+        </div>
+      )}
+      {claimStatus === "failed" && (
+        <div style={{ textAlign: "center", marginBottom: "12px", fontSize: "10px", color: "#ff4d4f", letterSpacing: "2px" }}>
+          ✗ CLAIM FAILED — TRY LATER
+        </div>
+      )}
 
       {/* Battle Zone */}
       <div style={{ flex: 1, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(252,196,25,0.1)", borderRadius: "14px", padding: "20px", marginBottom: "24px", minHeight: "200px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px" }}>

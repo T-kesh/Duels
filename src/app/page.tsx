@@ -9,10 +9,14 @@ export default function Home() {
   const { isConnected } = useAccount();
   const router = useRouter();
   const [streak, setStreak] = useState(0);
+  const [totalWins, setTotalWins] = useState(0); // ← added
 
   useEffect(() => {
     const s = parseInt(localStorage.getItem('duel_streak') || '0');
     setStreak(s);
+    // ← first code: load total wins from localStorage
+    const w = parseInt(localStorage.getItem('duel_total_wins') || '0');
+    setTotalWins(w);
   }, []);
 
   return (
@@ -85,12 +89,35 @@ export default function Home() {
         </div>
 
         {isConnected ? (
-          <button
-            onClick={() => router.push("/game")}
-            style={{ width: "100%", padding: "16px", background: "#fcc419", color: "#0a0a0f", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "900", letterSpacing: "4px", cursor: "pointer", fontFamily: "'Courier New', monospace" }}
-          >
-            ENTER DUEL
-          </button>
+          <>
+            <button
+              onClick={() => router.push("/game")}
+              style={{ width: "100%", padding: "16px", background: "#fcc419", color: "#0a0a0f", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "900", letterSpacing: "4px", cursor: "pointer", fontFamily: "'Courier New', monospace" }}
+            >
+              ENTER DUEL
+            </button>
+
+            {/* ← second code: leaderboard button */}
+            <button
+              onClick={() => router.push("/leaderboard")}
+              style={{
+                width: "100%",
+                marginTop: "10px",
+                padding: "12px",
+                background: "transparent",
+                color: "#555",
+                border: "1px solid #222",
+                borderRadius: "10px",
+                fontSize: "11px",
+                fontWeight: "700",
+                letterSpacing: "3px",
+                cursor: "pointer",
+                fontFamily: "'Courier New', monospace",
+              }}
+            >
+              🏆 LEADERBOARD
+            </button>
+          </>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
             <p style={{ color: "#555", fontSize: "12px" }}>Connect your MiniPay wallet to play</p>

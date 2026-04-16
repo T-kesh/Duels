@@ -1,4 +1,10 @@
+// Sources flattened with hardhat v2.28.6 https://hardhat.org
+
 // SPDX-License-Identifier: MIT
+
+// File src/contracts/DuelRewards.sol
+
+// Original license: SPDX_License_Identifier: MIT
 pragma solidity ^0.8.20;
 
 interface IERC20 {
@@ -8,7 +14,7 @@ interface IERC20 {
 
 contract DuelRewards {
 
-    // ─── State ───────────────────────────────────────────────────────────────
+    // ΓöÇΓöÇΓöÇ State ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     address public owner;
     address public treasury;
@@ -25,7 +31,7 @@ contract DuelRewards {
     mapping(address => bool) public isPlayer;
     address[] public players;
 
-    // ─── Errors ──────────────────────────────────────────────────────────────
+    // ΓöÇΓöÇΓöÇ Errors ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     error NotOwner();
     error AlreadyClaimed();
@@ -36,20 +42,20 @@ contract DuelRewards {
     error TransferFailed();
     error FeeTooHigh();
 
-    // ─── Events ──────────────────────────────────────────────────────────────
+    // ΓöÇΓöÇΓöÇ Events ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     event RewardClaimed(address indexed player, uint256 playerAmount, uint256 fee);
     event PoolToppedUp(uint256 amount);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    // ─── Modifiers ───────────────────────────────────────────────────────────
+    // ΓöÇΓöÇΓöÇ Modifiers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
         _;
     }
 
-    // ─── Constructor ─────────────────────────────────────────────────────────
+    // ΓöÇΓöÇΓöÇ Constructor ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     constructor(address _cusd, address _treasury) {
         owner = msg.sender;
@@ -57,7 +63,7 @@ contract DuelRewards {
         cusd = IERC20(_cusd);
     }
 
-    // ─── External ────────────────────────────────────────────────────────────
+    // ΓöÇΓöÇΓöÇ External ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function claimReward(bytes32 nonce, bytes memory signature) external {
         if (usedNonces[nonce]) revert AlreadyClaimed();
@@ -88,7 +94,7 @@ contract DuelRewards {
         emit RewardClaimed(msg.sender, playerAmount, fee);
     }
 
-    /// @notice Returns top 10 players sorted by wins. O(n²) — acceptable at MVP scale.
+    /// @notice Returns top 10 players sorted by wins. O(n┬▓) ΓÇö acceptable at MVP scale.
     function getLeaderboard() external view returns (address[] memory addrs, uint256[] memory wins) {
         uint256 total = players.length;
         uint256 count = total > 10 ? 10 : total;
@@ -121,7 +127,7 @@ contract DuelRewards {
         return cusd.balanceOf(address(this));
     }
 
-    // ─── Owner ───────────────────────────────────────────────────────────────
+    // ΓöÇΓöÇΓöÇ Owner ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function transferOwnership(address newOwner) external onlyOwner {
         emit OwnershipTransferred(owner, newOwner);
@@ -149,7 +155,7 @@ contract DuelRewards {
         if (!cusd.transfer(owner, amount)) revert TransferFailed();
     }
 
-    // ─── Internal ────────────────────────────────────────────────────────────
+    // ΓöÇΓöÇΓöÇ Internal ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function _recoverSigner(bytes32 ethSignedMessageHash, bytes memory signature) internal pure returns (address) {
         if (signature.length != 65) revert InvalidSignatureLength();

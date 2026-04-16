@@ -45,14 +45,13 @@ Respond with ONLY a valid JSON object, nothing else:
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-5-20251001",
         max_tokens: 150,
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     if (!response.ok) {
-      // Fallback: random card if API fails
       const fallback = CARDS[Math.floor(Math.random() * CARDS.length)];
       return NextResponse.json({ card: fallback, reasoning: "Instinct." });
     }
