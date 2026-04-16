@@ -37,6 +37,43 @@
         "DuelRewards",
         "IERC20"
       ]
+    },
+    "C:\\Users\\HR Gadget\\Desktop\\duel-miniapp\\src\\contracts\\DuelRewards_flat.sol": {
+      "lastModificationDate": 1776347306232,
+      "contentHash": "57137adf8798270013861ac4defd5e86",
+      "sourceName": "src/contracts/DuelRewards_flat.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "DuelRewards",
+        "IERC20"
+      ]
     }
   }
 }
