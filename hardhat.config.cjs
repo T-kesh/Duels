@@ -23,6 +23,32 @@ module.exports = {
       chainId: 42220,
     },
   },
+  sourcify: {
+    enabled: true,
+  },
+  etherscan: {
+    apiKey: {
+      celo: "C6UQ1K69527X43D1A5W3H2Y3K5Z6X7C8", // Standard Celo key if needed, but often not required for public Verifiers
+    },
+    customChains: [
+      {
+        network: "celo",
+        chainId: 42220,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api",
+          browserURL: "https://celoscan.io/",
+        },
+      },
+      {
+        network: "celoSepolia",
+        chainId: 11142220,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api",
+          browserURL: "https://sepolia.celoscan.io",
+        },
+      },
+    ],
+  },
   paths: {
     sources: "./src/contracts",
     tests: "./test",

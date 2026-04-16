@@ -2,23 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useReadContract } from "wagmi";
+import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
 
 interface LeaderboardEntry {
   rank: number;
   address: string;
   wins: number;
-  streak: number;
-}
-
-// Mock data for now — will be replaced with contract call
-function getMockLeaderboard(): LeaderboardEntry[] {
-  return [
-    { rank: 1, address: "0x1a2b...3c4d", wins: 24, streak: 7 },
-    { rank: 2, address: "0x5e6f...7g8h", wins: 18, streak: 3 },
-    { rank: 3, address: "0x9i0j...1k2l", wins: 15, streak: 5 },
-    { rank: 4, address: "0x3m4n...5o6p", wins: 12, streak: 2 },
-    { rank: 5, address: "0x7q8r...9s0t", wins: 9, streak: 1 },
-  ];
 }
 
 const RANK_COLORS: Record<number, string> = {
@@ -35,24 +25,35 @@ const RANK_EMOJIS: Record<number, string> = {
 
 export default function LeaderboardPage() {
   const router = useRouter();
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [playerWins, setPlayerWins] = useState(0);
   const [playerStreak, setPlayerStreak] = useState(0);
-  const [loading, setLoading] = useState(true);
+
+  // Fetch leaderboard from contract
+  const { data: leaderboardData, isLoading: loading } = useReadContract({
+    address: DUEL_REWARDS_ADDRESS,
+    abi: DUEL_REWARDS_ABI,
+    functionName: "getLeaderboard",
+  });
+
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
     // Load local player stats
-    const wins = parseInt(localStorage.getItem('duel_total_wins') || '0');
-    const streak = parseInt(localStorage.getItem('duel_streak') || '0');
+    const wins = parseInt(localStorage.getItem("duel_total_wins") || "0");
+    const streak = parseInt(localStorage.getItem("duel_streak") || "0");
     setPlayerWins(wins);
     setPlayerStreak(streak);
 
-    // Load leaderboard (mock for now)
-    setTimeout(() => {
-      setEntries(getMockLeaderboard());
-      setLoading(false);
-    }, 800);
-  }, []);
+    if (leaderboardData) {
+      const [addrs, winsArr] = leaderboardData as [string[], bigint[]];
+      const formattedEntries = addrs.map((addr, i) => ({
+        rank: i + 1,
+        address: addr,
+        wins: Number(winsArr[i]),
+      }));
+      setEntries(formattedEntries.filter(e => e.wins > 0)); // Only show players with wins
+    }
+  }, [leaderboardData]);
 
   return (
     <main style={{
@@ -157,13 +158,8 @@ export default function LeaderboardPage() {
                   fontWeight: entry.rank <= 3 ? "700" : "400",
                   letterSpacing: "1px",
                 }}>
-                  {entry.address}
+                  {entry.address.slice(0, 6)}...{entry.address.slice(-4)}
                 </p>
-                {entry.streak > 0 && (
-                  <p style={{ fontSize: "9px", color: "#444", marginTop: "2px" }}>
-                    🔥 {entry.streak} streak
-                  </p>
-                )}
               </div>
 
               {/* Wins */}

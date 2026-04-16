@@ -8,7 +8,7 @@ import { initGameState, resolveTurn, GameState } from "@/lib/gameEngine";
 
 type Phase = "draw" | "pick" | "resolve" | "done";
 
-const CONTRACT_ADDRESS = "0xA259c4D6Fa76dB7aC26BFd10832AAE202cce4519";
+import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
 
 export default function GamePage() {
   const { isConnected, address } = useAccount();
@@ -41,7 +41,7 @@ export default function GamePage() {
 
     try {
       // Ask your backend to sign a reward for this player
-      const res = await fetch("/api/claim-reward", {
+      const res = await fetch("/api/claim-rewards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ playerAddress: address }),
@@ -56,19 +56,8 @@ export default function GamePage() {
       const { config } = await import("@/lib/wagmi"); // adjust to your wagmi config path
 
       await writeContract(config, {
-        address: CONTRACT_ADDRESS,
-        abi: [
-          {
-            name: "claimReward",
-            type: "function",
-            stateMutability: "nonpayable",
-            inputs: [
-              { name: "nonce", type: "bytes32" },
-              { name: "signature", type: "bytes" },
-            ],
-            outputs: [],
-          },
-        ],
+        address: DUEL_REWARDS_ADDRESS,
+        abi: DUEL_REWARDS_ABI,
         functionName: "claimReward",
         args: [nonce, signature],
       });
