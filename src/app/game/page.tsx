@@ -118,7 +118,10 @@ export default function GamePage() {
         }
 
         setTimeout(() => {
-          router.push(`/result?won=${newState.playerWon}&playerHp=${newState.playerHp}&aiHp=${newState.aiHp}`);
+          const claimState = newState.playerWon ? "pending" : "none";
+          router.push(
+            `/result?won=${newState.playerWon}&playerHp=${newState.playerHp}&aiHp=${newState.aiHp}&claim=${claimState}`
+          );
         }, 1800);
       } else {
         setTimeout(() => {

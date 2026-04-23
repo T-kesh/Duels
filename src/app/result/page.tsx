@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useAccount } from "wagmi";
 
 function ResultContent() {
@@ -18,15 +18,7 @@ function ResultContent() {
   const won = searchParams.get("won") === "true";
   const playerHp = Number(searchParams.get("playerHp") || 0);
   const aiHp = Number(searchParams.get("aiHp") || 0);
-  const [claiming, setClaiming] = useState(false);
-  const [claimed, setClaimed] = useState(false);
-
-  const handleClaim = async () => {
-    setClaiming(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setClaimed(true);
-    setClaiming(false);
-  };
+  const claimState = searchParams.get("claim") || "none";
 
   return (
     <main style={{ minHeight: "100vh", background: "#0a0a0f", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px", fontFamily: "'Courier New', monospace", textAlign: "center" }}>
@@ -59,23 +51,19 @@ function ResultContent() {
           </div>
         </div>
 
-        {won && !claimed && (
+        {won && claimState === "pending" && (
           <div style={{ background: "rgba(53,212,106,0.05)", border: "1px solid rgba(53,212,106,0.2)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
-            <p style={{ fontSize: "10px", color: "#35d46a", letterSpacing: "3px", marginBottom: "4px" }}>REWARD AVAILABLE</p>
+            <p style={{ fontSize: "10px", color: "#35d46a", letterSpacing: "3px", marginBottom: "4px" }}>REWARD PROCESSING</p>
             <p style={{ fontSize: "22px", fontWeight: "900", color: "#fff", marginBottom: "12px" }}>0.05 cUSD</p>
-            <button
-              onClick={handleClaim}
-              disabled={claiming}
-              style={{ width: "100%", padding: "12px", background: claiming ? "#1a2e1a" : "#35d46a", color: claiming ? "#35d46a" : "#0a0a0f", border: "none", borderRadius: "8px", fontSize: "12px", fontWeight: "900", letterSpacing: "3px", cursor: claiming ? "not-allowed" : "pointer", fontFamily: "'Courier New', monospace" }}
-            >
-              {claiming ? "CLAIMING..." : "CLAIM REWARD"}
-            </button>
+            <p style={{ fontSize: "11px", color: "#9ad9b0", lineHeight: "1.5" }}>
+              Your win already triggered an automatic reward claim. Wallet confirmation and chain timing can take a moment.
+            </p>
           </div>
         )}
 
-        {claimed && (
+        {won && claimState === "none" && (
           <div style={{ background: "rgba(53,212,106,0.05)", border: "1px solid rgba(53,212,106,0.2)", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
-            <p style={{ fontSize: "13px", color: "#35d46a", letterSpacing: "2px" }}>✓ 0.05 cUSD SENT TO YOUR WALLET</p>
+            <p style={{ fontSize: "13px", color: "#35d46a", letterSpacing: "2px" }}>0.05 cUSD reward is tied to this win.</p>
           </div>
         )}
 
