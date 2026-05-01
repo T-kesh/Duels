@@ -1,6 +1,8 @@
 "use client";
 
 import { useConnect, useAccount, useDisconnect } from "wagmi";
+import { GlowButton } from "./ui/GlowButton";
+import { cn } from "@/lib/utils";
 
 export function ConnectButton() {
   const { connect, connectors, isPending } = useConnect();
@@ -9,86 +11,35 @@ export function ConnectButton() {
 
   if (isConnected && address) {
     return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "8px",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "11px",
-            color: "#35d46a",
-            letterSpacing: "1px",
-          }}
-        >
-          ● CONNECTED
-        </span>
-        <span
-          style={{
-            fontSize: "10px",
-            color: "#666",
-            fontFamily: "'Courier New', monospace",
-          }}
-        >
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center gap-2 px-3 py-1 bg-celo-green/10 border border-celo-green/20 rounded-full">
+          <span className="w-1.5 h-1.5 bg-celo-green rounded-full animate-pulse" />
+          <span className="text-[10px] font-bold text-celo-green tracking-widest uppercase">Connected</span>
+        </div>
+        <span className="text-xs font-mono text-muted-foreground">
           {address.slice(0, 6)}...{address.slice(-4)}
         </span>
         <button
           onClick={() => disconnect()}
-          style={{
-            padding: "6px 16px",
-            background: "transparent",
-            color: "#444",
-            border: "1px solid #222",
-            borderRadius: "6px",
-            fontSize: "10px",
-            letterSpacing: "2px",
-            cursor: "pointer",
-            fontFamily: "'Courier New', monospace",
-            transition: "all 0.2s ease",
-          }}
+          className="text-[10px] font-bold text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.2em]"
         >
-          DISCONNECT
+          Disconnect
         </button>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-        width: "100%",
-      }}
-    >
+    <div className="flex flex-col gap-3 w-full max-w-[280px]">
       {connectors.map((connector) => (
-        <button
+        <GlowButton
           key={connector.uid}
           onClick={() => connect({ connector })}
           disabled={isPending}
-          style={{
-            width: "100%",
-            padding: "14px",
-            background: isPending
-              ? "rgba(252,196,25,0.1)"
-              : "rgba(252,196,25,0.08)",
-            color: "#fcc419",
-            border: "1px solid rgba(252,196,25,0.2)",
-            borderRadius: "10px",
-            fontSize: "12px",
-            fontWeight: "700",
-            letterSpacing: "2px",
-            cursor: isPending ? "not-allowed" : "pointer",
-            fontFamily: "'Courier New', monospace",
-            transition: "all 0.2s ease",
-          }}
+          className="w-full"
         >
-          {isPending ? "CONNECTING..." : "CONNECT WALLET"}
-        </button>
+          {isPending ? "Connecting..." : "Connect Wallet"}
+        </GlowButton>
       ))}
     </div>
   );

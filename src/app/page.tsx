@@ -4,130 +4,101 @@ import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
 import { ConnectButton } from "@/components/connect-button";
+import { GlowButton } from "@/components/ui/GlowButton";
 
 export default function Home() {
   const { isConnected } = useAccount();
   const router = useRouter();
   const [streak, setStreak] = useState(0);
-  const [totalWins, setTotalWins] = useState(0); // ← added
 
   useEffect(() => {
     const s = parseInt(localStorage.getItem('duel_streak') || '0');
     setStreak(s);
-    // ← first code: load total wins from localStorage
-    const w = parseInt(localStorage.getItem('duel_total_wins') || '0');
-    setTotalWins(w);
   }, []);
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "#0a0a0f",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px",
-        fontFamily: "'Courier New', monospace",
-      }}
-    >
-      <div
-        style={{
-          position: "fixed",
-          top: "20%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "400px",
-          height: "400px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(252,196,25,0.08) 0%, transparent 70%)",
-          pointerEvents: "none",
-        }}
-      />
+    <main className="min-h-screen bg-duel-bg flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+      {/* Background Glow */}
+      <div className="fixed top-[-10%] left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-duel-gold/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div style={{ textAlign: "center", maxWidth: "340px", width: "100%" }}>
-        <div style={{ fontSize: "64px", marginBottom: "8px", filter: "drop-shadow(0 0 20px rgba(252,196,25,0.4))" }}>
-          ⚔️
+      <div className="z-10 text-center w-full max-w-sm animate-fade-in">
+        {/* Logo/Icon */}
+        <div className="relative inline-block mb-6">
+          <span className="text-7xl block animate-float filter drop-shadow-[0_0_20px_rgba(252,196,25,0.4)]">
+            ⚔️
+          </span>
         </div>
 
-        <h1 style={{ fontSize: "48px", fontWeight: "900", color: "#fcc419", letterSpacing: "8px", margin: "0 0 4px", textShadow: "0 0 30px rgba(252,196,25,0.5)" }}>
-          DUEL
+        {/* Title */}
+        <h1 className="text-6xl font-bold text-duel-gold tracking-[0.15em] mb-2 drop-shadow-[0_0_30px_rgba(252,196,25,0.3)] uppercase">
+          Duel
         </h1>
-
-        <p style={{ fontSize: "11px", color: "#666", letterSpacing: "4px", textTransform: "uppercase", marginBottom: "16px" }}>
-          AI Card Battle · Earn cUSD
+        <p className="text-[10px] text-muted-foreground tracking-[0.5em] uppercase mb-10">
+          AI Card Battle • Earn cUSD
         </p>
 
+        {/* Win Streak Badge */}
         {streak > 0 && (
-          <div style={{
-            background: "rgba(252,196,25,0.08)",
-            border: "1px solid rgba(252,196,25,0.2)",
-            borderRadius: "10px",
-            padding: "10px 16px",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-          }}>
-            <span style={{ fontSize: "18px" }}>🔥</span>
-            <span style={{ fontSize: "12px", color: "#fcc419", letterSpacing: "2px", fontWeight: "700" }}>
-              {streak} WIN STREAK
+          <div className="inline-flex items-center gap-2 px-4 py-2 glass border-duel-gold/20 rounded-full mb-10 animate-pulse">
+            <span className="text-lg">🔥</span>
+            <span className="text-xs font-bold text-duel-gold tracking-widest uppercase">
+              {streak} Win Streak
             </span>
           </div>
         )}
 
-        <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(252,196,25,0.15)", borderRadius: "12px", padding: "20px", marginBottom: "32px", textAlign: "left" }}>
-          <p style={{ fontSize: "10px", color: "#fcc419", letterSpacing: "3px", marginBottom: "12px" }}>HOW TO PLAY</p>
-          {["Pick 1 card each turn", "Beat CIPHER across 3 turns", "Higher HP at end wins", "Winners earn cUSD rewards"].map((step, i) => (
-            <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "8px", alignItems: "center" }}>
-              <span style={{ color: "#fcc419", fontSize: "12px" }}>{String(i + 1).padStart(2, "0")}</span>
-              <span style={{ color: "#aaa", fontSize: "13px" }}>{step}</span>
-            </div>
-          ))}
+        {/* How to Play Card */}
+        <div className="glass border-white/5 p-6 mb-10 text-left relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-duel-gold/50" />
+          <h3 className="text-[10px] font-bold text-duel-gold tracking-widest uppercase mb-4">Initial Intel</h3>
+          <ul className="space-y-3">
+            {[
+              "Deploy 1 card per turn",
+              "Outlast CIPHER over 3 turns",
+              "End with higher HP to win",
+              "Successful duels earn cUSD"
+            ].map((step, i) => (
+              <li key={i} className="flex gap-4 items-start">
+                <span className="font-mono text-duel-gold/40 text-xs">0{i + 1}</span>
+                <span className="text-xs text-muted-foreground leading-relaxed">{step}</span>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {isConnected ? (
-          <>
-            <button
-              onClick={() => router.push("/game")}
-              style={{ width: "100%", padding: "16px", background: "#fcc419", color: "#0a0a0f", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "900", letterSpacing: "4px", cursor: "pointer", fontFamily: "'Courier New', monospace" }}
-            >
-              ENTER DUEL
-            </button>
+        {/* Actions */}
+        <div className="flex flex-col gap-4 items-center w-full">
+          {isConnected ? (
+            <>
+              <GlowButton 
+                onClick={() => router.push("/game")}
+                size="lg"
+                className="w-full h-14"
+              >
+                Enter Arena
+              </GlowButton>
+              
+              <button
+                onClick={() => router.push("/leaderboard")}
+                className="text-[10px] font-bold text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.3em] py-2"
+              >
+                🏆 Hall of Fame
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-6 w-full">
+              <p className="text-xs text-muted-foreground animate-pulse">Authorize via MiniPay to begin</p>
+              <ConnectButton />
+            </div>
+          )}
+        </div>
 
-            {/* ← second code: leaderboard button */}
-            <button
-              onClick={() => router.push("/leaderboard")}
-              style={{
-                width: "100%",
-                marginTop: "10px",
-                padding: "12px",
-                background: "transparent",
-                color: "#555",
-                border: "1px solid #222",
-                borderRadius: "10px",
-                fontSize: "11px",
-                fontWeight: "700",
-                letterSpacing: "3px",
-                cursor: "pointer",
-                fontFamily: "'Courier New', monospace",
-              }}
-            >
-              🏆 LEADERBOARD
-            </button>
-          </>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
-            <p style={{ color: "#555", fontSize: "12px" }}>Connect your MiniPay wallet to play</p>
-            <ConnectButton />
-          </div>
-        )}
-
-        <p style={{ marginTop: "24px", fontSize: "10px", color: "#333", letterSpacing: "2px" }}>
-          BUILT ON CELO · PROOF OF SHIP
-        </p>
+        {/* Footer info */}
+        <footer className="mt-16">
+          <p className="text-[9px] text-white/10 tracking-[0.4em] font-mono uppercase">
+            Protocol: Celo • Proof of Ship
+          </p>
+        </footer>
       </div>
     </main>
   );
