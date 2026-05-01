@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@300;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,24 +7,39 @@
 :root {
   --background: 240 10% 4%;
   --foreground: 0 0% 98%;
+  
   --card: 240 10% 6%;
   --card-foreground: 0 0% 98%;
+  
   --popover: 240 10% 6%;
   --popover-foreground: 0 0% 98%;
+  
   --primary: 45 97% 54%;
   --primary-foreground: 240 10% 4%;
+  
   --secondary: 240 5% 18%;
   --secondary-foreground: 0 0% 98%;
+  
   --muted: 240 4% 16%;
   --muted-foreground: 240 5% 40%;
+  
   --accent: 240 4% 16%;
   --accent-foreground: 0 0% 98%;
+  
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
+  
   --border: 240 4% 16%;
   --input: 240 4% 16%;
   --ring: 45 97% 54%;
+  
   --radius: 0.75rem;
+  
+  /* Custom Design Tokens */
+  --duel-gold: #fcc419;
+  --duel-gold-glow: rgba(252, 196, 25, 0.4);
+  --duel-bg: #0a0a0f;
+  --duel-card-bg: rgba(255, 255, 255, 0.03);
 }
 
 * {
@@ -34,33 +51,71 @@
 html,
 body {
   height: 100%;
-  background: #0a0a0f;
+  background: var(--duel-bg);
   color: #fafafa;
-  font-family: "Courier New", Courier, monospace;
+  font-family: 'Space Grotesk', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-/* Scrollbar styling */
+code, .font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); opacity: 1; }
+  100% { transform: translateY(-40px); opacity: 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 5px var(--duel-gold-glow); }
+  50% { box-shadow: 0 0 20px var(--duel-gold-glow); }
+}
+
+@keyframes card-flip {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(180deg); }
+}
+
+.animate-shake { animation: shake 0.2s ease-in-out; }
+.animate-float { animation: float 1s ease-out forwards; }
+.animate-glow { animation: glow-pulse 2s infinite; }
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #222;
-  border-radius: 2px;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333;
 }
 
-/* Selection */
-::selection {
-  background: rgba(252, 196, 25, 0.3);
-  color: #fff;
+/* Glassmorphism Utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(252, 196, 25, 0.1);
+  border-radius: var(--radius);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(252, 196, 25, 0.3);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
 }
+
