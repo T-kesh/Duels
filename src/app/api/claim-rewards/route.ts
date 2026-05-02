@@ -1,12 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
 
+import { initGameState, resolveTurn } from "@/lib/gameEngine";
+import { Card } from "@/constants/cards";
+
+interface ClaimRequest {
+  playerAddress: string;
+  turns: { playerCard: Card; aiCard: Card }[];
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { playerAddress } = await req.json();
+    const body: ClaimRequest = await req.json();
+    const { playerAddress, turns } = body;
 
-    if (!playerAddress) {
-      return NextResponse.json({ error: "Missing player address" }, { status: 400 });
+    if (!playerAddress || !turns || turns.length === 0) {
+      return NextResponse.json({ error: "Invalid claim data" }, { status: 400 });
+    }
+
+    // Re-simulate the game server-side to prevent spoofing
+    let currentState = initGameState();
+    for (const turn of turns) {
+      currentState = resolveTurn(currentState, turn.playerCard, turn.aiCard);
+    }
+
+    if (!currentState.isOver || !currentState.playerWon) {
+      return NextResponse.json({ error: "Game not eligible for reward" }, { status: 403 });
     }
 
     const privateKey = process.env.PRIVATE_KEY;
