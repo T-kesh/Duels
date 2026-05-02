@@ -16,7 +16,8 @@ export function useGameState() {
   const [aiHintType, setAiHintType] = useState<string | null>(null);
 
   useEffect(() => {
-    setHand(drawHand());
+    const totalWins = parseInt(localStorage.getItem('duel_total_wins') || '0');
+    setHand(drawHand(totalWins));
   }, []);
 
   // Generate a new hint whenever we enter the pick phase
