@@ -13,6 +13,7 @@ import { BattleArena } from "@/components/ui/BattleArena";
 // Hooks
 import { useGameState } from "@/hooks/useGameState";
 import { useClaimReward } from "@/hooks/useClaimReward";
+import { useEnergy } from "@/hooks/useEnergy";
 
 export default function GamePage() {
   const { isConnected } = useAccount();
@@ -33,6 +34,7 @@ export default function GamePage() {
   } = useGameState();
 
   const { claimStatus, claimReward } = useClaimReward();
+  const { lives, useLife, nextRechargeAt, MAX_LIVES } = useEnergy();
 
   useEffect(() => {
     if (!isConnected) {
@@ -65,10 +67,18 @@ export default function GamePage() {
           <span className="text-xl font-bold tracking-[0.3em] text-duel-gold">DUEL</span>
           <span className="text-[9px] text-muted-foreground tracking-widest uppercase mt-1">Celo Alfajores</span>
         </div>
-        <div className="px-3 py-1.5 glass border-duel-gold/20 rounded-lg">
-          <span className="text-[10px] font-mono font-bold text-duel-gold tracking-widest">
-            TURN {Math.min(gameState.turn, 3)}/3
-          </span>
+        <div className="flex gap-2">
+          <div className="px-3 py-1.5 glass border-white/10 rounded-lg flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground font-bold">⚡</span>
+            <span className="text-[10px] font-mono font-bold text-white">
+              {lives}/{MAX_LIVES}
+            </span>
+          </div>
+          <div className="px-3 py-1.5 glass border-duel-gold/20 rounded-lg">
+            <span className="text-[10px] font-mono font-bold text-duel-gold tracking-widest">
+              TURN {Math.min(gameState.turn, 3)}/3
+            </span>
+          </div>
         </div>
       </header>
 
@@ -102,9 +112,21 @@ export default function GamePage() {
               3 cards. 3 turns. 1 victor.<br />
               Defeat CIPHER to claim your reward.
             </p>
-            <GlowButton onClick={() => setPhase("pick")}>
-              Begin Duel
+            <GlowButton 
+              onClick={() => {
+                if (useLife()) {
+                  setPhase("pick");
+                }
+              }}
+              disabled={lives <= 0}
+            >
+              {lives > 0 ? "Begin Duel" : "Out of Energy"}
             </GlowButton>
+            {lives <= 0 && nextRechargeAt && (
+              <p className="text-[9px] text-duel-gold/50 mt-4 font-mono uppercase tracking-widest">
+                Recharge in: {new Date(nextRechargeAt - Date.now()).toISOString().substr(11, 8)}
+              </p>
+            )}
           </div>
         )}
 
