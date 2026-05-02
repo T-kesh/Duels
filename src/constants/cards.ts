@@ -64,9 +64,43 @@ export const CARDS: Card[] = [
   },
 ];
 
-// Player draws 3 random cards per game
-export function drawHand(): Card[] {
-  const shuffled = [...CARDS].sort(() => Math.random() - 0.5);
+// Generate tiered versions of base cards
+export function getTieredPool(wins: number): Card[] {
+  let pool = [...CARDS];
+  
+  // Unlock Tier 2 at 5 wins
+  if (wins >= 5) {
+    const tier2 = CARDS.map(c => ({
+      ...c,
+      id: `${c.id}_t2`,
+      name: `${c.name} II`,
+      tier: 2,
+      damage: Math.floor(c.damage * 1.3),
+      shield: Math.floor(c.shield * 1.3),
+    }));
+    pool = [...pool, ...tier2];
+  }
+  
+  // Unlock Tier 3 at 15 wins
+  if (wins >= 15) {
+    const tier3 = CARDS.map(c => ({
+      ...c,
+      id: `${c.id}_t3`,
+      name: `${c.name} III`,
+      tier: 3,
+      damage: Math.floor(c.damage * 1.6),
+      shield: Math.floor(c.shield * 1.6),
+    }));
+    pool = [...pool, ...tier3];
+  }
+  
+  return pool;
+}
+
+// Player draws 3 random cards per game based on their progress
+export function drawHand(wins: number = 0): Card[] {
+  const pool = getTieredPool(wins);
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, 3);
 }
 
