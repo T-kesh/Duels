@@ -6,35 +6,48 @@ interface MoveRequest {
   aiHp: number;
   playerHp: number;
   turn: number;
+  aiHintType: string;
+  history: {
+    streak: number;
+    totalWins: number;
+  };
 }
 
 export async function POST(req: NextRequest) {
   const body: MoveRequest = await req.json();
-  const { playerCard, aiHp, playerHp, turn } = body;
+  const { playerCard, aiHp, playerHp, turn, aiHintType, history } = body;
 
   const cardList = CARDS.map(
-    (c) => `${c.id}: ${c.name} (damage:${c.damage}, shield:${c.shield})`
+    (c) => `${c.id}: ${c.name} (type:${c.type}, damage:${c.damage}, shield:${c.shield})`
   ).join("\n");
 
-  const prompt = `You are CIPHER, an unforgiving AI duelist. You must pick ONE card to play this turn.
+  const prompt = `You are CIPHER, an unforgiving and slightly arrogant AI duelist. 
 
 GAME STATE:
 - Turn: ${turn}/3
 - Your HP: ${aiHp}/100
 - Opponent HP: ${playerHp}/100
-- Opponent just played: ${playerCard.name} (damage:${playerCard.damage}, shield:${playerCard.shield})
+- Opponent just played: ${playerCard.name}
+- Your PREVIOUS HINT to the player: "CIPHER is preparing a ${aiHintType} move"
+
+PLAYER HISTORY:
+- Their current win streak: ${history.streak}
+- Their total lifetime wins: ${history.totalWins}
 
 AVAILABLE CARDS:
 ${cardList}
 
-STRATEGY GUIDE:
-- If your HP is low (<40), prioritize survival — pick cards with high shield
-- If opponent played attack, counter with high shield
-- If opponent played defend (low damage), hit hard with high damage
-- In turn 3, go all-in — it's the last move
+STRATEGY & PERSONALITY:
+1. TRASH TALK: Use their history. If they have a high streak, try to break it. If they have 0 wins, be condescending.
+2. BLUFFING: You previously told the player you would play a "${aiHintType}" card. 
+   - You can stick to it to be "fair".
+   - Or you can BLUFF: pick a different type to catch them off-guard.
+3. LOGIC: 
+   - If your HP is low, prioritize survival.
+   - Counter their played card: ${playerCard.name}.
 
-Respond with ONLY a valid JSON object, nothing else:
-{"cardId": "<one of the card ids above>", "reasoning": "<1 sentence>"}`;
+Respond with ONLY a valid JSON object:
+{"cardId": "<id>", "reasoning": "<1 toxic/arrogant sentence acknowledging the hint or their history>"}`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
