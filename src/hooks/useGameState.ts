@@ -13,10 +13,20 @@ export function useGameState() {
   const [aiReasoning, setAiReasoning] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [usedCardIds, setUsedCardIds] = useState<Set<string>>(new Set());
+  const [aiHintType, setAiHintType] = useState<string | null>(null);
 
   useEffect(() => {
     setHand(drawHand());
   }, []);
+
+  // Generate a new hint whenever we enter the pick phase
+  useEffect(() => {
+    if (phase === "pick") {
+      const types = ["attack", "defend", "special"];
+      const randomType = types[Math.floor(Math.random() * types.length)];
+      setAiHintType(randomType);
+    }
+  }, [phase]);
 
   const playTurn = useCallback(async (playerCard: Card, onWin?: () => void) => {
     if (isLoading || usedCardIds.has(playerCard.id)) return;
@@ -33,8 +43,14 @@ export function useGameState() {
           aiHp: gameState.aiHp,
           playerHp: gameState.playerHp,
           turn: gameState.turn,
+          aiHintType, // Pass the bluff hint to the AI
+          history: {
+            streak: parseInt(localStorage.getItem('duel_streak') || '0'),
+            totalWins: parseInt(localStorage.getItem('duel_total_wins') || '0'),
+          }
         }),
       });
+
 
       const data = await res.json();
       const cipher: Card = data.card;
@@ -80,7 +96,7 @@ export function useGameState() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, usedCardIds, gameState]);
+  }, [isLoading, usedCardIds, gameState, aiHintType]);
 
   return {
     hand,
@@ -92,6 +108,7 @@ export function useGameState() {
     aiReasoning,
     isLoading,
     usedCardIds,
+    aiHintType,
     playTurn
   };
 }
