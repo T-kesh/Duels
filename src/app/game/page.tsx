@@ -28,6 +28,7 @@ export default function GamePage() {
     aiReasoning,
     isLoading,
     usedCardIds,
+    aiHintType,
     playTurn
   } = useGameState();
 
@@ -156,8 +157,31 @@ export default function GamePage() {
             )}
 
             {phase === "pick" && (
-              <div className="text-center animate-fade-in">
-                <p className="text-[10px] text-white/20 tracking-[0.4em] uppercase">Select your move</p>
+              <div className="flex flex-col items-center gap-6 animate-fade-in">
+                <div className="relative group">
+                  <div className="w-24 h-32 glass border-white/10 rounded-xl flex items-center justify-center relative overflow-hidden shadow-2xl">
+                    <div className="absolute inset-0 bg-duel-gold/5 animate-pulse" />
+                    <div className="text-3xl opacity-20 grayscale">?</div>
+                    
+                    {/* Hint Overlay */}
+                    <div className="absolute inset-x-0 bottom-0 py-2 bg-duel-gold/10 border-t border-white/5 flex flex-col items-center">
+                      <span className="text-[8px] text-duel-gold/60 tracking-widest uppercase mb-1">Hint</span>
+                      {aiHintType === "attack" && <span className="text-sm">⚔️</span>}
+                      {aiHintType === "defend" && <span className="text-sm">🛡️</span>}
+                      {aiHintType === "special" && <span className="text-sm">⚡</span>}
+                    </div>
+                  </div>
+                  
+                  {/* Outer Glow */}
+                  <div className="absolute -inset-4 bg-duel-gold/5 rounded-full blur-2xl opacity-50 pointer-events-none" />
+                </div>
+                
+                <div className="text-center">
+                  <p className="text-[10px] text-duel-gold tracking-[0.3em] uppercase mb-1">CIPHER is ready</p>
+                  <p className="text-[9px] text-muted-foreground tracking-[0.1em] italic">
+                    It looks like it's preparing a <span className="text-duel-gold font-bold">{aiHintType}</span> move...
+                  </p>
+                </div>
               </div>
             )}
           </div>
