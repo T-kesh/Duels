@@ -93,6 +93,17 @@ function ResultContent() {
           >
             New Duel
           </GlowButton>
+
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}/?challenger=${address}`;
+              navigator.clipboard.writeText(url);
+              alert("Challenge link copied to clipboard!");
+            }}
+            className="glass border-white/5 bg-white/5 hover:bg-white/10 transition-all rounded-xl py-4 text-[10px] font-bold text-duel-gold tracking-[0.2em] uppercase"
+          >
+            ⚔️ Challenge a Friend
+          </button>
           
           <button
             onClick={() => router.push("/")}
