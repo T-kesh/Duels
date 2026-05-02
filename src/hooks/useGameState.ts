@@ -77,7 +77,7 @@ export function useGameState() {
           const totalWins = parseInt(localStorage.getItem('duel_total_wins') || '0') + 1;
           localStorage.setItem('duel_total_wins', totalWins.toString());
 
-          onWin?.();
+          onWin?.(newState.turns);
         } else {
           localStorage.setItem('duel_streak', '0');
         }

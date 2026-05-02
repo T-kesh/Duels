@@ -56,7 +56,7 @@ export default function GamePage() {
   }, [phase, gameState, router]);
 
   const onCardSelect = (card: any) => {
-    playTurn(card, claimReward);
+    playTurn(card, (finalTurns) => claimReward(finalTurns));
   };
 
   return (

@@ -9,7 +9,7 @@ export function useClaimReward() {
   const { data: walletClient } = useWalletClient();
   const [claimStatus, setClaimStatus] = useState<"idle" | "claiming" | "claimed" | "failed">("idle");
 
-  const claimReward = useCallback(async () => {
+  const claimReward = useCallback(async (turns: any[]) => {
     if (!address || !walletClient) return;
     setClaimStatus("claiming");
 
@@ -17,7 +17,10 @@ export function useClaimReward() {
       const res = await fetch("/api/claim-rewards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerAddress: address }),
+        body: JSON.stringify({ 
+          playerAddress: address,
+          turns: turns.map(t => ({ playerCard: t.playerCard, aiCard: t.aiCard }))
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to get reward signature");
