@@ -99,8 +99,13 @@ export function getTieredPool(wins: number): Card[] {
 
 // Player draws 3 random cards per game based on their progress
 export function drawHand(wins: number = 0): Card[] {
+  return drawHandWithRng(wins, Math.random);
+}
+
+/** Cryptographically-strong friendly shuffle hook for `/api/start-duel`. */
+export function drawHandWithRng(wins: number, random: () => number): Card[] {
   const pool = getTieredPool(wins);
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  const shuffled = [...pool].sort(() => random() - 0.5);
   return shuffled.slice(0, 3);
 }
 

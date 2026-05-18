@@ -84,6 +84,12 @@ export default function Home() {
               >
                 🏆 Hall of Fame
               </button>
+              <button
+                onClick={() => router.push("/pvp")}
+                className="text-[10px] font-bold text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.3em] py-2"
+              >
+                🤝 Human vs Human
+              </button>
             </>
           ) : (
             <div className="flex flex-col items-center gap-6 w-full">

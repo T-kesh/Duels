@@ -1,0 +1,48 @@
+"use client";
+
+import { CardTile } from "@/components/ui/CardTile";
+import type { Card } from "@/constants/cards";
+
+interface PlayerHandProps {
+  hand: Card[];
+  usedCardIds: Set<string>;
+  selectedCard: Card | null;
+  disabled: boolean;
+  showCount: boolean;
+  onSelect: (card: Card) => void;
+}
+
+export function PlayerHand({
+  hand,
+  usedCardIds,
+  selectedCard,
+  disabled,
+  showCount,
+  onSelect,
+}: PlayerHandProps) {
+  return (
+    <footer className="mt-auto pt-6">
+      <div className="flex justify-between items-center mb-4">
+        <span className="text-[10px] font-bold tracking-[0.2em] text-muted-foreground uppercase">
+          Your Hand
+        </span>
+        {showCount && (
+          <span className="text-[9px] text-duel-gold/50 font-mono">3 / 3 CARDS</span>
+        )}
+      </div>
+
+      <div className="flex gap-3 h-36">
+        {hand.map((card) => (
+          <CardTile
+            key={card.id}
+            card={card}
+            used={usedCardIds.has(card.id)}
+            selected={selectedCard?.id === card.id}
+            disabled={disabled}
+            onClick={() => onSelect(card)}
+          />
+        ))}
+      </div>
+    </footer>
+  );
+}

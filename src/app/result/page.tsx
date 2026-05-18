@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 function ResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
 
   useEffect(() => {
     if (!isConnected) {
@@ -96,9 +96,13 @@ function ResultContent() {
 
           <button
             onClick={() => {
-              const url = `${window.location.origin}/?challenger=${address}`;
+              if (!address) {
+                alert("Connect your wallet to copy your challenge link.");
+                return;
+              }
+              const url = `${window.location.origin}/pvp?invite=${encodeURIComponent(address)}`;
               navigator.clipboard.writeText(url);
-              alert("Challenge link copied to clipboard!");
+              alert("PvP duel link copied to clipboard!");
             }}
             className="glass border-white/5 bg-white/5 hover:bg-white/10 transition-all rounded-xl py-4 text-[10px] font-bold text-duel-gold tracking-[0.2em] uppercase"
           >
@@ -119,11 +123,13 @@ function ResultContent() {
 
 export default function ResultPage() {
   return (
-    <Suspense fallback={
-      <main className="min-h-screen bg-duel-bg flex flex-col items-center justify-center">
-        <div className="w-8 h-8 border-2 border-duel-gold/20 border-t-duel-gold rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-duel-bg flex flex-col items-center justify-center">
+          <div className="w-8 h-8 border-2 border-duel-gold/20 border-t-duel-gold rounded-full animate-spin" />
+        </main>
+      }
+    >
       <ResultContent />
     </Suspense>
   );

@@ -1,83 +1,104 @@
-import { NextRequest, NextResponse } from "next/server";
-import { CARDS, Card } from "@/constants/cards";
+export const runtime = "nodejs";
 
-interface MoveRequest {
-  playerCard: Card;
-  aiHp: number;
+import { NextRequest, NextResponse } from "next/server";
+
+import type { Card } from "@/constants/cards";
+import { fetchCipherPick, buildCipherPrompt } from "@/lib/cipherAnthropic";
+import { resolveTurn, initGameState, type GameState } from "@/lib/gameEngine";
+import { getAiDuelSession, touchSession } from "@/lib/duelSessionStore";
+
+type DuelHistoryEntry = {
+  won: boolean;
   playerHp: number;
-  turn: number;
-  aiHintType: string;
-  history: {
-    streak: number;
-    totalWins: number;
-  };
+  aiHp: number;
+};
+
+interface AiMovePayload {
+  duelId: string;
+  playerCard: Card;
+  aiHintType?: string | null;
+  aiHp?: number;
+  playerHp?: number;
+  turn?: number;
+  history?: { streak?: number; totalWins?: number };
+  recentDuels?: DuelHistoryEntry[];
+}
+
+function safeParseGameState(raw: string): GameState | null {
+  try {
+    return JSON.parse(raw) as GameState;
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const body: MoveRequest = await req.json();
-  const { playerCard, aiHp, playerHp, turn, aiHintType, history } = body;
+  const body = (await req.json()) as AiMovePayload;
 
-  const cardList = CARDS.map(
-    (c) => `${c.id}: ${c.name} (type:${c.type}, damage:${c.damage}, shield:${c.shield})`
-  ).join("\n");
+  const {
+    duelId,
+    playerCard,
+    aiHintType = "special",
+    history = {},
+    recentDuels = [],
+  } = body;
 
-  const prompt = `You are CIPHER, an unforgiving and slightly arrogant AI duelist. 
-
-GAME STATE:
-- Turn: ${turn}/3
-- Your HP: ${aiHp}/100
-- Opponent HP: ${playerHp}/100
-- Opponent just played: ${playerCard.name}
-- Your PREVIOUS HINT to the player: "CIPHER is preparing a ${aiHintType} move"
-
-PLAYER HISTORY:
-- Their current win streak: ${history.streak}
-- Their total lifetime wins: ${history.totalWins}
-
-AVAILABLE CARDS:
-${cardList}
-
-STRATEGY & PERSONALITY:
-1. TRASH TALK: Use their history. If they have a high streak, try to break it. If they have 0 wins, be condescending.
-2. BLUFFING: You previously told the player you would play a "${aiHintType}" card. 
-   - You can stick to it to be "fair".
-   - Or you can BLUFF: pick a different type to catch them off-guard.
-3. LOGIC: 
-   - If your HP is low, prioritize survival.
-   - Counter their played card: ${playerCard.name}.
-
-Respond with ONLY a valid JSON object:
-{"cardId": "<id>", "reasoning": "<1 toxic/arrogant sentence acknowledging the hint or their history>"}`;
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-5-20251001",
-        max_tokens: 150,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    if (!response.ok) {
-      const fallback = CARDS[Math.floor(Math.random() * CARDS.length)];
-      return NextResponse.json({ card: fallback, reasoning: "Instinct." });
-    }
-
-    const data = await response.json();
-    const text = data.content?.[0]?.text || "";
-
-    const cleaned = text.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-    const card = CARDS.find((c) => c.id === parsed.cardId) || CARDS[0];
-    return NextResponse.json({ card, reasoning: parsed.reasoning });
-  } catch {
-    const fallback = CARDS[Math.floor(Math.random() * CARDS.length)];
-    return NextResponse.json({ card: fallback, reasoning: "Calculated." });
+  if (!duelId || !playerCard?.id) {
+    return NextResponse.json({ error: "missing_duel_session" }, { status: 400 });
   }
+
+  const session = getAiDuelSession(duelId);
+  if (!session?.hand?.length || !session.stateJson) {
+    return NextResponse.json({ error: "unknown_or_expired_duel" }, { status: 404 });
+  }
+
+  const dealtIds = session.hand.map((c) => c.id);
+  if (!dealtIds.includes(playerCard.id)) {
+    return NextResponse.json({ error: "illegal_card_for_session" }, { status: 400 });
+  }
+
+  const pickedIds = new Set(session.transcript.map((round) => round.playerCard.id));
+  if (pickedIds.has(playerCard.id)) {
+    return NextResponse.json({ error: "card_already_used" }, { status: 400 });
+  }
+
+  let gameState = safeParseGameState(session.stateJson) ?? initGameState();
+  if (gameState.isOver) {
+    return NextResponse.json({ error: "duel_already_complete" }, { status: 400 });
+  }
+
+  const prompt = buildCipherPrompt({
+    playerCard,
+    aiHp: gameState.aiHp,
+    playerHp: gameState.playerHp,
+    turn: gameState.turn,
+    aiHintType: String(aiHintType),
+    streak: Number(history.streak ?? 0),
+    totalWins: Number(history.totalWins ?? 0),
+    recentDuels,
+  });
+
+  const { card, reasoning } = await fetchCipherPick(prompt);
+
+  const nextState = resolveTurn(gameState, playerCard, card);
+
+  session.transcript.push({ playerCard, aiCard: card });
+  session.stateJson = JSON.stringify(nextState);
+  touchSession(session);
+
+  const publicState = {
+    playerHp: nextState.playerHp,
+    aiHp: nextState.aiHp,
+    turn: nextState.turn,
+    isOver: nextState.isOver,
+    playerWon: nextState.playerWon,
+    turnsCount: nextState.turns.length,
+  };
+
+  return NextResponse.json({
+    card,
+    reasoning,
+    state: publicState,
+    gameState: nextState,
+  });
 }

@@ -7,46 +7,63 @@ import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
 export function useClaimReward() {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const [claimStatus, setClaimStatus] = useState<"idle" | "claiming" | "claimed" | "failed">("idle");
+  const [claimStatus, setClaimStatus] = useState<"idle" | "claiming" | "claimed" | "failed">(
+    "idle",
+  );
 
-  const claimReward = useCallback(async (turns: any[]) => {
-    if (!address || !walletClient) return;
-    setClaimStatus("claiming");
+  const claimReward = useCallback(
+    async (duelOrLegacy: string | null | Record<string, unknown>[]) => {
+      if (!address || !walletClient) return;
 
-    try {
-      const res = await fetch("/api/claim-rewards", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          playerAddress: address,
-          turns: turns.map(t => ({ playerCard: t.playerCard, aiCard: t.aiCard }))
-        }),
-      });
+      let duelId: string | undefined;
+      let legacyTurns: Record<string, unknown>[] | undefined;
 
-      if (!res.ok) throw new Error("Failed to get reward signature");
+      if (Array.isArray(duelOrLegacy)) {
+        legacyTurns = duelOrLegacy;
+      } else {
+        duelId = duelOrLegacy ?? undefined;
+      }
 
-      const { nonce, signature } = await res.json();
+      if (!duelId && !legacyTurns?.length) return;
 
-      // We need to use wagmi actions directly for the write
-      const { writeContract } = await import("wagmi/actions");
-      const { config } = await import("@/lib/wagmi");
+      setClaimStatus("claiming");
 
-      await writeContract(config, {
-        address: DUEL_REWARDS_ADDRESS,
-        abi: DUEL_REWARDS_ABI,
-        functionName: "claimReward",
-        args: [nonce, signature],
-      });
+      try {
+        const res = await fetch("/api/claim-rewards", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            playerAddress: address,
+            duelId,
+            turns: legacyTurns,
+          }),
+        });
 
-      setClaimStatus("claimed");
-    } catch (err) {
-      console.error("Claim failed:", err);
-      setClaimStatus("failed");
-    }
-  }, [address, walletClient]);
+        if (!res.ok) throw new Error("Failed to get reward signature");
+
+        const { nonce, signature } = await res.json();
+
+        const { writeContract } = await import("wagmi/actions");
+        const { config } = await import("@/lib/wagmi");
+
+        await writeContract(config, {
+          address: DUEL_REWARDS_ADDRESS as `0x${string}`,
+          abi: DUEL_REWARDS_ABI,
+          functionName: "claimReward",
+          args: [nonce, signature],
+        });
+
+        setClaimStatus("claimed");
+      } catch (err) {
+        console.error("Claim failed:", err);
+        setClaimStatus("failed");
+      }
+    },
+    [address, walletClient],
+  );
 
   return {
     claimStatus,
-    claimReward
+    claimReward,
   };
 }

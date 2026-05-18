@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useReadContract } from "wagmi";
+import { cn } from "@/lib/utils";
 import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
 
 interface LeaderboardEntry {
@@ -11,13 +12,7 @@ interface LeaderboardEntry {
   wins: number;
 }
 
-const RANK_COLORS: Record<number, string> = {
-  1: "#fcc419",
-  2: "#adb5bd",
-  3: "#cd7f32",
-};
-
-const RANK_EMOJIS: Record<number, string> = {
+const RANK_EMOJI: Record<number, string> = {
   1: "🥇",
   2: "🥈",
   3: "🥉",
@@ -28,9 +23,8 @@ export default function LeaderboardPage() {
   const [playerWins, setPlayerWins] = useState(0);
   const [playerStreak, setPlayerStreak] = useState(0);
 
-  // Fetch leaderboard from contract
   const { data: leaderboardData, isLoading: loading } = useReadContract({
-    address: DUEL_REWARDS_ADDRESS,
+    address: DUEL_REWARDS_ADDRESS as `0x${string}`,
     abi: DUEL_REWARDS_ABI,
     functionName: "getLeaderboard",
   });
@@ -38,7 +32,6 @@ export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
-    // Load local player stats
     const wins = parseInt(localStorage.getItem("duel_total_wins") || "0");
     const streak = parseInt(localStorage.getItem("duel_streak") || "0");
     setPlayerWins(wins);
@@ -51,155 +44,121 @@ export default function LeaderboardPage() {
         address: addr,
         wins: Number(winsArr[i]),
       }));
-      setEntries(formattedEntries.filter(e => e.wins > 0)); // Only show players with wins
+      setEntries(formattedEntries.filter((e) => e.wins > 0));
     }
   }, [leaderboardData]);
 
   return (
-    <main style={{
-      minHeight: "100vh",
-      background: "#0a0a0f",
-      display: "flex",
-      flexDirection: "column",
-      padding: "20px 16px",
-      fontFamily: "'Courier New', monospace",
-      maxWidth: "420px",
-      margin: "0 auto",
-    }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+    <main className="min-h-screen bg-duel-bg flex flex-col px-4 py-5 max-w-[420px] mx-auto font-sans">
+      <div className="flex justify-between items-center mb-6">
         <button
+          type="button"
           onClick={() => router.push("/")}
-          style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "12px", letterSpacing: "2px", fontFamily: "'Courier New', monospace", padding: 0 }}
+          className="bg-transparent border-0 p-0 cursor-pointer text-xs font-mono text-muted-foreground tracking-[0.2em] hover:text-white uppercase"
         >
           ← BACK
         </button>
-        <span style={{ fontSize: "14px", fontWeight: "900", color: "#fcc419", letterSpacing: "4px" }}>
-          LEADERBOARD
-        </span>
-        <span style={{ width: "60px" }} />
+        <span className="text-sm font-black text-duel-gold tracking-[0.25em]">LEADERBOARD</span>
+        <span className="w-[52px]" />
       </div>
 
-      {/* Player Stats */}
-      <div style={{
-        background: "rgba(252,196,25,0.05)",
-        border: "1px solid rgba(252,196,25,0.15)",
-        borderRadius: "12px",
-        padding: "16px",
-        marginBottom: "24px",
-        display: "flex",
-        justifyContent: "space-around",
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: "9px", color: "#555", letterSpacing: "2px", marginBottom: "4px" }}>YOUR WINS</p>
-          <p style={{ fontSize: "24px", fontWeight: "900", color: "#fcc419" }}>{playerWins}</p>
+      <div
+        className={cn(
+          "rounded-xl p-4 mb-6 flex justify-around gap-4",
+          "bg-duel-gold/[0.05] border border-duel-gold/15",
+        )}
+      >
+        <div className="text-center flex-1">
+          <p className="text-[9px] text-muted-foreground tracking-[0.2em] uppercase mb-1">
+            LOCAL WINS
+          </p>
+          <p className="text-2xl font-black text-duel-gold tabular-nums">{playerWins}</p>
+          <p className="text-[8px] text-muted-foreground/80 mt-0.5">Off-chain profile</p>
         </div>
-        <div style={{ width: "1px", background: "#1a1a1a" }} />
-        <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: "9px", color: "#555", letterSpacing: "2px", marginBottom: "4px" }}>STREAK</p>
-          <p style={{ fontSize: "24px", fontWeight: "900", color: "#fcc419" }}>
+        <div className="w-px bg-white/10 self-stretch min-h-[48px]" />
+        <div className="text-center flex-1">
+          <p className="text-[9px] text-muted-foreground tracking-[0.2em] uppercase mb-1">STREAK</p>
+          <p className="text-2xl font-black text-duel-gold tabular-nums">
             {playerStreak > 0 ? `🔥${playerStreak}` : "0"}
           </p>
+          <p className="text-[8px] text-muted-foreground/80 mt-0.5">This device</p>
         </div>
       </div>
 
-      {/* Leaderboard List */}
-      <div style={{
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(255,255,255,0.05)",
-        borderRadius: "12px",
-        overflow: "hidden",
-        marginBottom: "24px",
-      }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          padding: "10px 16px",
-          borderBottom: "1px solid #111",
-        }}>
-          <span style={{ fontSize: "9px", color: "#333", letterSpacing: "2px" }}>RANK</span>
-          <span style={{ fontSize: "9px", color: "#333", letterSpacing: "2px" }}>PLAYER</span>
-          <span style={{ fontSize: "9px", color: "#333", letterSpacing: "2px" }}>WINS</span>
+      <div
+        className={cn(
+          "rounded-xl overflow-hidden mb-6 border border-white/5 bg-white/[0.02]",
+        )}
+      >
+        <div className="flex justify-between px-4 py-2.5 border-b border-black/80">
+          <span className="text-[9px] text-muted-foreground/70 tracking-[0.2em] uppercase">RANK</span>
+          <span className="text-[9px] text-muted-foreground/70 tracking-[0.2em] uppercase">PLAYER</span>
+          <span className="text-[9px] text-muted-foreground/70 tracking-[0.2em] uppercase">WINS</span>
         </div>
 
         {loading ? (
-          <div style={{ padding: "40px", textAlign: "center" }}>
-            <p style={{ color: "#333", fontSize: "11px", letterSpacing: "3px" }}>LOADING...</p>
+          <div className="py-12 text-center text-[11px] text-muted-foreground tracking-[0.3em]">
+            LOADING…
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="py-10 text-center text-[11px] text-muted-foreground/80 tracking-[0.2em]">
+            NO ON-CHAIN CLAIMS YET
           </div>
         ) : (
           entries.map((entry) => (
             <div
-              key={entry.rank}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "14px 16px",
-                borderBottom: "1px solid #0f0f0f",
-                background: entry.rank === 1 ? "rgba(252,196,25,0.03)" : "transparent",
-              }}
+              key={entry.address + entry.rank}
+              className={cn(
+                "flex items-center justify-between px-4 py-3.5 border-b border-black/70 last:border-b-0",
+                entry.rank === 1 ? "bg-duel-gold/[0.03]" : "",
+              )}
             >
-              {/* Rank */}
-              <div style={{ width: "40px", textAlign: "center" }}>
-                {RANK_EMOJIS[entry.rank] ? (
-                  <span style={{ fontSize: "18px" }}>{RANK_EMOJIS[entry.rank]}</span>
+              <div className="w-10 shrink-0 text-center">
+                {RANK_EMOJI[entry.rank] ? (
+                  <span className="text-lg leading-none">{RANK_EMOJI[entry.rank]}</span>
                 ) : (
-                  <span style={{ fontSize: "12px", color: "#444", fontWeight: "700" }}>
+                  <span className="text-xs font-bold text-muted-foreground tabular-nums">
                     {String(entry.rank).padStart(2, "0")}
                   </span>
                 )}
               </div>
-
-              {/* Address */}
-              <div style={{ flex: 1, paddingLeft: "12px" }}>
-                <p style={{
-                  fontSize: "12px",
-                  color: RANK_COLORS[entry.rank] || "#666",
-                  fontWeight: entry.rank <= 3 ? "700" : "400",
-                  letterSpacing: "1px",
-                }}>
-                  {entry.address.slice(0, 6)}...{entry.address.slice(-4)}
+              <div className="flex-1 px-3 min-w-0">
+                <p
+                  className={cn(
+                    "text-xs tracking-wide font-mono truncate",
+                    entry.rank <= 3 ? "text-duel-gold font-semibold" : "text-muted-foreground",
+                  )}
+                  title={entry.address}
+                >
+                  {entry.address.slice(0, 6)}…{entry.address.slice(-4)}
                 </p>
               </div>
-
-              {/* Wins */}
-              <div style={{ textAlign: "right" }}>
-                <p style={{
-                  fontSize: "16px",
-                  fontWeight: "900",
-                  color: RANK_COLORS[entry.rank] || "#555",
-                }}>
+              <div className="text-right shrink-0 tabular-nums">
+                <p
+                  className={cn(
+                    "text-base font-black",
+                    entry.rank <= 3 ? "text-duel-gold" : "text-muted-foreground",
+                  )}
+                >
                   {entry.wins}
                 </p>
-                <p style={{ fontSize: "9px", color: "#333", letterSpacing: "1px" }}>WINS</p>
+                <p className="text-[9px] text-muted-foreground/70 tracking-[0.1em]">WINS</p>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* Play button */}
       <button
+        type="button"
         onClick={() => router.push("/game")}
-        style={{
-          width: "100%",
-          padding: "14px",
-          background: "#fcc419",
-          color: "#0a0a0f",
-          border: "none",
-          borderRadius: "10px",
-          fontSize: "12px",
-          fontWeight: "900",
-          letterSpacing: "4px",
-          cursor: "pointer",
-          fontFamily: "'Courier New', monospace",
-        }}
+        className="w-full py-3.5 rounded-lg bg-duel-gold text-duel-bg border-0 text-xs font-black tracking-[0.3em] uppercase cursor-pointer font-sans hover:opacity-95 transition-opacity"
       >
         PLAY NOW
       </button>
 
-      <p style={{ textAlign: "center", marginTop: "16px", fontSize: "9px", color: "#222", letterSpacing: "2px" }}>
-        ONCHAIN LEADERBOARD COMING SOON
+      <p className="text-center mt-4 text-[9px] text-muted-foreground/50 tracking-[0.2em] uppercase leading-relaxed px-2">
+        On-chain rankings use contract wins from successful rewards (PvP resolves count too).
       </p>
     </main>
   );
