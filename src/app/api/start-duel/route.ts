@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { drawHandWithRng } from "@/constants/cards";
 import { initGameState } from "@/lib/gameEngine";
-import { createAiDuelSession } from "@/lib/duelSessionStore";
+import { createAiDuelSession, saveAiDuelSession } from "@/lib/duelSessionStore";
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,15 +13,15 @@ export async function POST(req: NextRequest) {
     const wins = Math.max(0, Math.floor(Number(body.totalWins ?? 0)));
     const duelId = crypto.randomUUID();
 
-    /** Double `[0,1)` draw — matches Fisher intent well enough while staying uniform-ish. */
+    /** Cryptographically-strong RNG for card draw */
     const rng = () => crypto.randomInt(281474976710655) / 281474976710655;
-
 
     const hand = drawHandWithRng(wins, rng);
 
-    const session = createAiDuelSession(duelId);
+    const session = await createAiDuelSession(duelId);
     session.hand = hand;
     session.stateJson = JSON.stringify(initGameState());
+    await saveAiDuelSession(session);
 
     return NextResponse.json({ duelId, hand });
   } catch (err) {

@@ -1,5 +1,6 @@
 import type { TurnResult } from "@/lib/gameEngine";
 import type { Card } from "@/constants/cards";
+import { Redis } from "@upstash/redis";
 
 export interface DuelSession {
   duelId: string;
@@ -13,47 +14,108 @@ export interface DuelSession {
   rewardSignatureIssued?: boolean;
 }
 
+const TTL_SECONDS = 45 * 60; // 45 minutes
+
+/**
+ * Returns a Redis client if UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+ * are set, otherwise falls back to the in-memory Map (local dev without Redis).
+ */
+function getRedis(): Redis | null {
+  if (
+    process.env.UPSTASH_REDIS_REST_URL &&
+    process.env.UPSTASH_REDIS_REST_TOKEN
+  ) {
+    return new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return null;
+}
+
+// ─── In-memory fallback (local dev only) ─────────────────────────────────────
+
 declare global {
   var __DUEL_AI_SESSION__: Map<string, DuelSession> | undefined;
 }
 
-const TTL_MS = 45 * 60 * 1000;
-
-function backingMap(): Map<string, DuelSession> {
-  const g = globalThis as typeof globalThis & { __DUEL_AI_SESSION__?: Map<string, DuelSession> };
-  if (!g.__DUEL_AI_SESSION__) {
-    g.__DUEL_AI_SESSION__ = new Map();
-  }
+function memoryMap(): Map<string, DuelSession> {
+  const g = globalThis as typeof globalThis & {
+    __DUEL_AI_SESSION__?: Map<string, DuelSession>;
+  };
+  if (!g.__DUEL_AI_SESSION__) g.__DUEL_AI_SESSION__ = new Map();
   return g.__DUEL_AI_SESSION__;
 }
 
-function sweepExpired(map: Map<string, DuelSession>, now = Date.now()) {
-  for (const [key, session] of map) {
-    if (session.expiresAtMs <= now) map.delete(key);
-  }
+function sessionKey(duelId: string) {
+  return `duel:session:${duelId}`;
 }
 
-export function createAiDuelSession(duelId: string): DuelSession {
-  const map = backingMap();
-  sweepExpired(map);
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+export async function createAiDuelSession(duelId: string): Promise<DuelSession> {
   const session: DuelSession = {
     duelId,
     hand: [],
     transcript: [],
     stateJson: "",
-    expiresAtMs: Date.now() + TTL_MS,
+    expiresAtMs: Date.now() + TTL_SECONDS * 1000,
   };
-  map.set(duelId, session);
+
+  const redis = getRedis();
+  if (redis) {
+    await redis.set(sessionKey(duelId), JSON.stringify(session), {
+      ex: TTL_SECONDS,
+    });
+  } else {
+    memoryMap().set(duelId, session);
+  }
+
   return session;
 }
 
-export function touchSession(session: DuelSession) {
-  session.expiresAtMs = Date.now() + TTL_MS;
+export async function getAiDuelSession(
+  duelId: string | undefined
+): Promise<DuelSession | undefined> {
+  if (!duelId) return undefined;
+
+  const redis = getRedis();
+  if (redis) {
+    const raw = await redis.get<string>(sessionKey(duelId));
+    if (!raw) return undefined;
+    try {
+      return typeof raw === "string" ? JSON.parse(raw) : (raw as DuelSession);
+    } catch {
+      return undefined;
+    }
+  }
+
+  // Memory fallback
+  const map = memoryMap();
+  const session = map.get(duelId);
+  if (!session) return undefined;
+  if (session.expiresAtMs <= Date.now()) {
+    map.delete(duelId);
+    return undefined;
+  }
+  return session;
 }
 
-export function getAiDuelSession(duelId: string | undefined): DuelSession | undefined {
-  if (!duelId) return undefined;
-  const map = backingMap();
-  sweepExpired(map);
-  return map.get(duelId);
+export async function saveAiDuelSession(session: DuelSession): Promise<void> {
+  // Refresh TTL on every write
+  session.expiresAtMs = Date.now() + TTL_SECONDS * 1000;
+
+  const redis = getRedis();
+  if (redis) {
+    await redis.set(sessionKey(session.duelId), JSON.stringify(session), {
+      ex: TTL_SECONDS,
+    });
+  } else {
+    memoryMap().set(session.duelId, session);
+  }
+}
+
+/** @deprecated use saveAiDuelSession instead */
+export async function touchSession(session: DuelSession): Promise<void> {
+  return saveAiDuelSession(session);
 }
