@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { Card } from "@/constants/cards";
 import { initGameState, type GameState } from "@/lib/gameEngine";
 import { pushRecentDuelOutcome, readRecentDuels } from "@/lib/recentDuels";
@@ -19,6 +19,10 @@ export function useGameState() {
   const [isLoading, setIsLoading] = useState(false);
   const [usedCardIds, setUsedCardIds] = useState<Set<string>>(new Set());
   const [aiHintType, setAiHintType] = useState<string | null>(null);
+  const [turnError, setTurnError] = useState<string | null>(null);
+
+  // Track whether a turn is in-flight to prevent double-taps
+  const turnInFlight = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,10 +73,14 @@ export function useGameState() {
   const playTurn = useCallback(
     async (playerCard: Card, onWin?: (due: string | null) => void) => {
       if (!duelId) return;
-      if (isLoading || usedCardIds.has(playerCard.id)) return;
+      if (turnInFlight.current || usedCardIds.has(playerCard.id)) return;
 
+      turnInFlight.current = true;
       setIsLoading(true);
       setSelectedCard(playerCard);
+      setAiCard(null);
+      setAiReasoning("");
+      setTurnError(null);
       setPhase("resolve");
 
       try {
@@ -81,6 +89,11 @@ export function useGameState() {
           playerHp,
           aiHp,
         }));
+
+        // 25-second timeout — Vercel functions can take up to 10s,
+        // plus Claude API latency on top of that
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 25_000);
 
         const res = await fetch("/api/ai-move", {
           method: "POST",
@@ -95,7 +108,10 @@ export function useGameState() {
             },
             recentDuels: recent,
           }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeout);
 
         const data = await res.json();
 
@@ -103,6 +119,7 @@ export function useGameState() {
           throw new Error(data?.error ?? "ai_move_failed");
         }
 
+        // ── Success path ──────────────────────────────────────────────
         setAiCard(data.card as Card);
         setAiReasoning(String(data.reasoning ?? ""));
 
@@ -147,14 +164,30 @@ export function useGameState() {
             setPhase("pick");
           }, 1800);
         }
-      } catch (err) {
+      } catch (err: unknown) {
+        // ── Error path — show message, let player retry the same card ──
         console.error("Game error:", err);
-        setPhase("pick");
+
+        const msg =
+          err instanceof DOMException && err.name === "AbortError"
+            ? "CIPHER took too long to respond. Tap your card again."
+            : "Connection lost. Tap your card to retry.";
+
+        setTurnError(msg);
+        setAiCard(null);
+        setAiReasoning("");
+
+        // Return to pick so the player can retry (card NOT marked as used)
+        setTimeout(() => {
+          setSelectedCard(null);
+          setPhase("pick");
+        }, 600);
       } finally {
         setIsLoading(false);
+        turnInFlight.current = false;
       }
     },
-    [isLoading, usedCardIds, duelId, aiHintType],
+    [usedCardIds, duelId, aiHintType],
   );
 
   return {
@@ -171,6 +204,8 @@ export function useGameState() {
     isLoading,
     usedCardIds,
     aiHintType,
+    turnError,
     playTurn,
   };
 }
+

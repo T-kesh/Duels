@@ -35,6 +35,7 @@ export default function GamePage() {
     isLoading,
     usedCardIds,
     aiHintType,
+    turnError,
     playTurn,
   } = useGameState();
 
@@ -80,6 +81,12 @@ export default function GamePage() {
       {startupError && (
         <div className="mb-4 text-center glass border-destructive/30 px-4 py-2 rounded-xl text-[11px] text-destructive">
           {startupError}
+        </div>
+      )}
+
+      {turnError && (
+        <div className="mb-4 text-center glass border-duel-gold/30 px-4 py-2 rounded-xl text-[11px] text-duel-gold animate-fade-in">
+          ⚠️ {turnError}
         </div>
       )}
 
