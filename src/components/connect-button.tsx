@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useConnect, useAccount, useDisconnect } from "wagmi";
 import { GlowButton } from "./ui/GlowButton";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,13 @@ export function ConnectButton() {
   const { connect, connectors, isPending } = useConnect();
   const { isConnected, address } = useAccount();
   const { disconnect } = useDisconnect();
+  const [isMiniPay, setIsMiniPay] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
+      setIsMiniPay(true);
+    }
+  }, []);
 
   if (isConnected && address) {
     return (
@@ -25,6 +33,15 @@ export function ConnectButton() {
         >
           Disconnect
         </button>
+      </div>
+    );
+  }
+
+  if (isMiniPay) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-2">
+        <div className="w-6 h-6 border-2 border-duel-gold/20 border-t-duel-gold rounded-full animate-spin mb-1" />
+        <span className="text-[10px] text-muted-foreground tracking-widest uppercase animate-pulse">Connecting...</span>
       </div>
     );
   }

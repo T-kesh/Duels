@@ -18,13 +18,16 @@
 
 import { type ReactNode, useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, useConnect } from "wagmi";
+import { WagmiProvider, useConnect, useAccount } from "wagmi";
 import { config } from "@/lib/wagmi";
 
 function MiniPayAutoConnect() {
   const { connect, connectors } = useConnect();
+  const { isConnected } = useAccount();
 
   useEffect(() => {
+    if (isConnected) return;
+
     // Auto-connect when running inside MiniPay
     if (typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
       const injectedConnector = connectors.find((c) => c.id === "injected");
@@ -32,7 +35,7 @@ function MiniPayAutoConnect() {
         connect({ connector: injectedConnector });
       }
     }
-  }, [connect, connectors]);
+  }, [connect, connectors, isConnected]);
 
   return null;
 }
