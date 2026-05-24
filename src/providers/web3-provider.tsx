@@ -29,7 +29,8 @@ function MiniPayAutoConnect() {
     if (isConnected) return;
 
     // Auto-connect when running inside MiniPay
-    if (typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
+    const eth = window.ethereum as { isMiniPay?: boolean } | undefined;
+    if (typeof window !== "undefined" && eth?.isMiniPay) {
       const injectedConnector = connectors.find((c) => c.id === "injected");
       if (injectedConnector) {
         connect({ connector: injectedConnector });
