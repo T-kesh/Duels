@@ -3,6 +3,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/constants/cards";
+import { HINT_SHIELD_BONUS, previewDamage } from "@/lib/gameEngine";
 
 interface CardTileProps {
   card: Card;
@@ -12,6 +13,8 @@ interface CardTileProps {
   disabled?: boolean;
   className?: string;
   isRevealed?: boolean;
+  /** When set, show damage preview vs a hinted defend (honest hint). */
+  aiHintType?: string | null;
 }
 
 export function CardTile({
@@ -21,8 +24,11 @@ export function CardTile({
   selected,
   disabled,
   className,
-  isRevealed = true,
+  aiHintType,
 }: CardTileProps) {
+  const hintShield =
+    aiHintType === "defend" ? 40 + HINT_SHIELD_BONUS : aiHintType === "attack" ? 0 : 20;
+  const vsHint = previewDamage(card, hintShield);
   return (
     <button
       onClick={onClick}
@@ -40,16 +46,17 @@ export function CardTile({
         used && "opacity-30 grayscale cursor-not-allowed",
         !used && !disabled && "hover:border-duel-gold/40 hover:bg-white/5 hover:-translate-y-1 cursor-pointer",
       )}>
-        {/* Tier Badge */}
         <div className="absolute top-2 right-2">
-          {card.tier > 1 && (
-            <span className={cn(
+          <span
+            className={cn(
               "text-[7px] font-bold px-1 py-0.5 rounded uppercase tracking-tighter",
-              card.tier === 2 ? "bg-slate-400/20 text-slate-300" : "bg-duel-gold/20 text-duel-gold"
-            )}>
-              T{card.tier}
-            </span>
-          )}
+              card.tier === 1 && "bg-white/10 text-muted-foreground",
+              card.tier === 2 && "bg-slate-400/20 text-slate-300",
+              card.tier >= 3 && "bg-duel-gold/20 text-duel-gold",
+            )}
+          >
+            {card.tier === 1 ? "I" : card.tier === 2 ? "II" : "III"}
+          </span>
         </div>
 
         {/* Card Content */}
@@ -62,12 +69,17 @@ export function CardTile({
         <div className="flex flex-wrap justify-center gap-1 mt-auto">
           {card.damage > 0 && (
             <span className="text-[8px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-md border border-destructive/20">
-              -{card.damage} HP
+              −{card.damage} ATK
             </span>
           )}
           {card.shield > 0 && (
             <span className="text-[8px] font-bold text-sky-400 bg-sky-400/10 px-1.5 py-0.5 rounded-md border border-sky-400/20">
               +{card.shield} DEF
+            </span>
+          )}
+          {aiHintType && card.damage > 0 && (
+            <span className="text-[8px] font-bold text-duel-gold/80 bg-duel-gold/10 px-1.5 py-0.5 rounded-md border border-duel-gold/20 w-full">
+              ~{vsHint} vs hint
             </span>
           )}
         </div>
