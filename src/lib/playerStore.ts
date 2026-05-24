@@ -1,0 +1,179 @@
+import { getRedis } from "@/lib/redis";
+
+export const MAX_LIVES = 5;
+export const RECHARGE_TIME_MS = 4 * 60 * 60 * 1000;
+
+export interface PlayerEnergy {
+  lives: number;
+  bonusLives: number;
+  lastRechargeMs: number;
+}
+
+export interface PlayerState {
+  energy: PlayerEnergy;
+  totalWins: number;
+  nextRechargeAt: number | null;
+}
+
+interface StoredPlayer {
+  lives: number;
+  bonusLives: number;
+  lastRechargeMs: number;
+  totalWins: number;
+}
+
+function memoryPlayers(): Map<string, StoredPlayer> {
+  const g = globalThis as typeof globalThis & { __DUEL_PLAYER_STORE__?: Map<string, StoredPlayer> };
+  if (!g.__DUEL_PLAYER_STORE__) g.__DUEL_PLAYER_STORE__ = new Map();
+  return g.__DUEL_PLAYER_STORE__;
+}
+
+function playerKey(address: string) {
+  return `player:${address.toLowerCase()}`;
+}
+
+function defaultStored(): StoredPlayer {
+  return {
+    lives: MAX_LIVES,
+    bonusLives: 0,
+    lastRechargeMs: Date.now(),
+    totalWins: 0,
+  };
+}
+
+async function loadStored(address: string): Promise<StoredPlayer> {
+  const redis = getRedis();
+  const key = playerKey(address);
+
+  if (redis) {
+    const raw = await redis.get<string>(key);
+    if (raw) {
+      try {
+        return typeof raw === "string"
+          ? (JSON.parse(raw) as StoredPlayer)
+          : (raw as StoredPlayer);
+      } catch {
+        return defaultStored();
+      }
+    }
+    const fresh = defaultStored();
+    await redis.set(key, JSON.stringify(fresh));
+    return fresh;
+  }
+
+  const map = memoryPlayers();
+  if (!map.has(key)) map.set(key, defaultStored());
+  return { ...map.get(key)! };
+}
+
+async function saveStored(address: string, data: StoredPlayer): Promise<void> {
+  const redis = getRedis();
+  const key = playerKey(address);
+
+  if (redis) {
+    await redis.set(key, JSON.stringify(data));
+  } else {
+    memoryPlayers().set(key, { ...data });
+  }
+}
+
+function applyRecharge(data: StoredPlayer, now = Date.now()): PlayerState {
+  let lives = data.lives;
+  let lastRechargeMs = data.lastRechargeMs;
+  let nextRechargeAt: number | null = null;
+
+  if (lives >= MAX_LIVES) {
+    lives = MAX_LIVES;
+    nextRechargeAt = null;
+  } else {
+    const elapsed = now - lastRechargeMs;
+    const gained = Math.floor(elapsed / RECHARGE_TIME_MS);
+    if (gained > 0) {
+      lives = Math.min(MAX_LIVES, lives + gained);
+      if (lives >= MAX_LIVES) {
+        lastRechargeMs = now;
+        nextRechargeAt = null;
+      } else {
+        lastRechargeMs = lastRechargeMs + gained * RECHARGE_TIME_MS;
+      }
+    }
+    if (lives < MAX_LIVES) {
+      const remaining = RECHARGE_TIME_MS - (now - lastRechargeMs);
+      nextRechargeAt = now + remaining;
+    }
+  }
+
+  return {
+    energy: {
+      lives,
+      bonusLives: data.bonusLives,
+      lastRechargeMs,
+    },
+    totalWins: data.totalWins,
+    nextRechargeAt,
+  };
+}
+
+export async function getPlayerState(address: string): Promise<PlayerState> {
+  const stored = await loadStored(address);
+  const state = applyRecharge(stored);
+  await saveStored(address, {
+    ...stored,
+    lives: state.energy.lives,
+    lastRechargeMs: state.energy.lastRechargeMs,
+  });
+  return state;
+}
+
+/** One-time seed from client localStorage wins (migration). */
+export async function seedWinsIfHigher(address: string, clientWins: number): Promise<void> {
+  if (!Number.isFinite(clientWins) || clientWins <= 0) return;
+  const stored = await loadStored(address);
+  if (clientWins > stored.totalWins) {
+    stored.totalWins = Math.floor(clientWins);
+    await saveStored(address, stored);
+  }
+}
+
+export async function consumeLife(address: string): Promise<{ ok: boolean; state: PlayerState }> {
+  const stored = await loadStored(address);
+  const state = applyRecharge(stored);
+
+  if (state.energy.bonusLives > 0) {
+    stored.bonusLives = state.energy.bonusLives - 1;
+    stored.lives = state.energy.lives;
+    stored.lastRechargeMs = state.energy.lastRechargeMs;
+    await saveStored(address, stored);
+    return { ok: true, state: await getPlayerState(address) };
+  }
+
+  if (state.energy.lives <= 0) {
+    return { ok: false, state };
+  }
+
+  const wasFull = state.energy.lives >= MAX_LIVES;
+  stored.lives = state.energy.lives - 1;
+  stored.bonusLives = state.energy.bonusLives;
+  stored.lastRechargeMs = wasFull ? Date.now() : state.energy.lastRechargeMs;
+  await saveStored(address, stored);
+
+  return { ok: true, state: await getPlayerState(address) };
+}
+
+export async function grantBonus(address: string, amount = 1): Promise<PlayerState> {
+  const stored = await loadStored(address);
+  stored.bonusLives += amount;
+  await saveStored(address, stored);
+  return getPlayerState(address);
+}
+
+export async function incrementWins(address: string): Promise<number> {
+  const stored = await loadStored(address);
+  stored.totalWins += 1;
+  await saveStored(address, stored);
+  return stored.totalWins;
+}
+
+export async function grantPerfectDuelBonus(address: string): Promise<void> {
+  await grantBonus(address, 1);
+}
