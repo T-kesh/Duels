@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { useConnect, useAccount, useDisconnect } from "wagmi";
 import { GlowButton } from "./ui/GlowButton";
-import { cn } from "@/lib/utils";
-
 export function ConnectButton() {
   const { connect, connectors, isPending } = useConnect();
   const { isConnected, address } = useAccount();
@@ -12,7 +10,8 @@ export function ConnectButton() {
   const [isMiniPay, setIsMiniPay] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && (window.ethereum as any)?.isMiniPay) {
+    const eth = window.ethereum as { isMiniPay?: boolean } | undefined;
+    if (typeof window !== "undefined" && eth?.isMiniPay) {
       setIsMiniPay(true);
     }
   }, []);
