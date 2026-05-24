@@ -12,14 +12,28 @@ import {
 } from "viem";
 import { celoAlfajores } from "viem/chains";
 
-declare global {
-  var __TOPUP_USED_TX__: Set<string> | undefined;
-}
+import { getRedis, setNxEx } from "@/lib/redis";
+import { parsePlayerAddress } from "@/lib/addresses";
+import { grantBonus } from "@/lib/playerStore";
 
-function usedHashes(): Set<string> {
+const TOPUP_DEDUPE_TTL = 60 * 60 * 24 * 30; // 30 days
+
+function memoryUsedHashes(): Set<string> {
   const g = globalThis as typeof globalThis & { __TOPUP_USED_TX__?: Set<string> };
   if (!g.__TOPUP_USED_TX__) g.__TOPUP_USED_TX__ = new Set<string>();
   return g.__TOPUP_USED_TX__;
+}
+
+async function markTxConsumed(hash: string): Promise<boolean> {
+  const key = `topup:tx:${hash.toLowerCase()}`;
+  const redis = getRedis();
+  if (redis) {
+    return setNxEx(key, "1", TOPUP_DEDUPE_TTL);
+  }
+  const set = memoryUsedHashes();
+  if (set.has(key)) return false;
+  set.add(key);
+  return true;
 }
 
 function clientRpc() {
@@ -92,9 +106,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "misconfigured_topup_treasury" }, { status: 500 });
     }
 
-    const set = usedHashes();
-    const dedupeKey = hash.toLowerCase();
-    if (set.has(dedupeKey)) {
+    const consumed = await markTxConsumed(hash);
+    if (!consumed) {
       return NextResponse.json({ error: "tx_already_consumed" }, { status: 409 });
     }
 
@@ -119,7 +132,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "transfer_mismatch_or_insufficient_amount" }, { status: 400 });
     }
 
-    set.add(dedupeKey);
+    const normalized = parsePlayerAddress(player);
+    if (normalized) {
+      await grantBonus(normalized, 1);
+    }
 
     return NextResponse.json({ ok: true, bonusGrant: 1 });
   } catch (err) {

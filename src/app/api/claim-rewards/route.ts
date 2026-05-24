@@ -3,8 +3,10 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
 
-import { initGameState, resolveTurn, type GameState } from "@/lib/gameEngine";
+import { initGameState, resolveTurn, type GameState, type AiHintType } from "@/lib/gameEngine";
 import { getAiDuelSession, saveAiDuelSession } from "@/lib/duelSessionStore";
+import { parsePlayerAddress } from "@/lib/addresses";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 interface ClaimPayload {
   playerAddress?: string;
@@ -12,11 +14,15 @@ interface ClaimPayload {
 }
 
 function replaySession(
-  transcript: { playerCard: Parameters<typeof resolveTurn>[1]; aiCard: Parameters<typeof resolveTurn>[2] }[]
+  transcript: {
+    playerCard: Parameters<typeof resolveTurn>[1];
+    aiCard: Parameters<typeof resolveTurn>[2];
+    aiHintType?: AiHintType;
+  }[],
 ): GameState {
   let state = initGameState();
   for (const turn of transcript) {
-    state = resolveTurn(state, turn.playerCard, turn.aiCard);
+    state = resolveTurn(state, turn.playerCard, turn.aiCard, turn.aiHintType);
   }
   return state;
 }
@@ -34,29 +40,35 @@ export async function POST(req: NextRequest) {
   try {
     const body: ClaimPayload = await req.json();
 
-    if (!body.playerAddress || !body.duelId) {
+    const playerAddress = parsePlayerAddress(body.playerAddress);
+    if (!playerAddress || !body.duelId) {
       return NextResponse.json({ error: "Invalid claim data" }, { status: 400 });
     }
 
-    const { playerAddress, duelId } = body;
+    const { duelId } = body;
 
-    // ── Fetch session from Redis (survives cold starts) ──────────────────────
     const sessionRecord = await getAiDuelSession(duelId);
     if (!sessionRecord) {
       return NextResponse.json({ error: "unknown_or_expired_duel" }, { status: 404 });
     }
 
-    // ── Guard: no double-claiming ─────────────────────────────────────────────
+    if (sessionRecord.playerAddress !== playerAddress) {
+      return NextResponse.json({ error: "player_address_mismatch" }, { status: 403 });
+    }
+
+    const limit = await checkRateLimit("claim-rewards", playerAddress);
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "rate_limit_exceeded" }, { status: 429 });
+    }
+
     if (sessionRecord.rewardSignatureIssued) {
       return NextResponse.json({ error: "reward_already_claimed_for_session" }, { status: 409 });
     }
 
-    // ── Guard: transcript must have turns ────────────────────────────────────
     if (!sessionRecord.transcript.length) {
       return NextResponse.json({ error: "Incomplete duel transcript" }, { status: 400 });
     }
 
-    // ── Server-side game replay for integrity check ──────────────────────────
     const replay = replaySession(sessionRecord.transcript);
     const serverSnapshot = parseGameState(sessionRecord.stateJson);
 
@@ -72,23 +84,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Game not eligible for reward" }, { status: 403 });
     }
 
-    // ── Sign the reward ──────────────────────────────────────────────────────
     const privateKey = process.env.PRIVATE_KEY;
     if (!privateKey) {
       return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
     }
 
     const nonce = ethers.keccak256(
-      ethers.solidityPacked(["address", "uint256"], [playerAddress, Date.now()])
+      ethers.solidityPacked(["address", "uint256"], [playerAddress, Date.now()]),
     );
 
     const wallet = new ethers.Wallet(privateKey);
     const message = ethers.keccak256(
-      ethers.solidityPacked(["address", "bytes32"], [playerAddress, nonce])
+      ethers.solidityPacked(["address", "bytes32"], [playerAddress, nonce]),
     );
     const signature = await wallet.signMessage(ethers.getBytes(message));
 
-    // ── Mark signature as issued and persist ─────────────────────────────────
     sessionRecord.rewardSignatureIssued = true;
     await saveAiDuelSession(sessionRecord);
 
