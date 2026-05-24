@@ -36,11 +36,14 @@ export default function GamePage() {
     usedCardIds,
     aiHintType,
     turnError,
+    lastDamageFlash,
+    perfectDuelToast,
+    beginDuel,
     playTurn,
   } = useGameState();
 
   const { claimStatus, claimReward } = useClaimReward();
-  const { lives, bonusLives, totalPlaysRemaining, useLife, nextRechargeAt, MAX_LIVES } = useEnergy();
+  const { lives, bonusLives, totalPlaysRemaining, nextRechargeAt, MAX_LIVES } = useEnergy();
   const topUp = useEnergyTopUp();
 
   useEffect(() => {
@@ -65,6 +68,8 @@ export default function GamePage() {
     playTurn(card, (id) => claimReward(id));
   };
 
+  const clutchTurn = phase === "pick" && gameState.turn === 3;
+
   return (
     <main className="min-h-screen bg-duel-bg flex flex-col p-6 max-w-md mx-auto animate-fade-in font-sans">
       <GameHeader
@@ -74,9 +79,20 @@ export default function GamePage() {
         currentTurnDisplay={Math.min(gameState.turn, 3)}
       />
 
-      <HealthBarsSection playerHp={gameState.playerHp} aiHp={gameState.aiHp} />
+      <HealthBarsSection
+        playerHp={gameState.playerHp}
+        aiHp={gameState.aiHp}
+        damageFlash={lastDamageFlash}
+        clutchTurn={clutchTurn}
+      />
 
       <ClaimStatusStrip status={claimStatus} />
+
+      {perfectDuelToast && (
+        <div className="mb-4 text-center glass border-celo-green/30 px-4 py-2 rounded-xl text-[11px] text-celo-green animate-fade-in">
+          Perfect duel! +1 bonus energy secured.
+        </div>
+      )}
 
       {startupError && (
         <div className="mb-4 text-center glass border-destructive/30 px-4 py-2 rounded-xl text-[11px] text-destructive">
@@ -93,7 +109,7 @@ export default function GamePage() {
       <BattleArena className={isLoading ? "animate-pulse" : ""}>
         {phase === "draw" && (
           <div className="text-center animate-slide-up">
-            <h2 className="text-duel-gold text-sm font-bold tracking-[0.3em] mb-4 uppercase">Hand Dealt</h2>
+            <h2 className="text-duel-gold text-sm font-bold tracking-[0.3em] mb-4 uppercase">Enter the Arena</h2>
             <p className="text-muted-foreground text-xs leading-relaxed mb-6">
               3 cards. 3 turns. 1 victor.
               <br />
@@ -107,12 +123,11 @@ export default function GamePage() {
             )}
 
             <GlowButton
-              onClick={() => {
-                if (useLife()) {
-                  setPhase("pick");
-                }
+              onClick={async () => {
+                const ok = await beginDuel();
+                if (ok) setPhase("pick");
               }}
-              disabled={dealingDeck || totalPlaysRemaining <= 0 || !duelId}
+              disabled={dealingDeck || totalPlaysRemaining <= 0}
             >
               {totalPlaysRemaining > 0 ? "Begin Duel" : "Out of Energy"}
             </GlowButton>
@@ -207,8 +222,7 @@ export default function GamePage() {
                 <div className="text-center">
                   <p className="text-[10px] text-duel-gold tracking-[0.3em] uppercase mb-1">CIPHER is ready</p>
                   <p className="text-[9px] text-muted-foreground tracking-[0.1em] italic">
-                    It looks like it&apos;s preparing a{" "}
-                    <span className="text-duel-gold font-bold">{aiHintType}</span> move...
+                    Honoring the hint grants CIPHER +5 shield.
                   </p>
                 </div>
               </div>
@@ -223,6 +237,7 @@ export default function GamePage() {
         selectedCard={selectedCard}
         disabled={phase !== "pick" || isLoading || dealingDeck || !duelId}
         showCount={phase === "pick"}
+        aiHintType={phase === "pick" ? aiHintType : null}
         onSelect={onCardSelect}
       />
     </main>
