@@ -10,6 +10,13 @@ out
 # Environment variables
 .env*.local
 
+# Local Redis probes (never commit credentials)
+test-redis.cjs
+
+# Hardhat
+cache/
+artifacts/
+
 # Debug logs
 npm-debug.log*
 yarn-debug.log*
