@@ -1,43 +1,26 @@
 import type { TurnResult } from "@/lib/gameEngine";
 import type { Card } from "@/constants/cards";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
+
+export type AiHintType = "attack" | "defend" | "special";
 
 export interface DuelSession {
   duelId: string;
+  /** Wallet that started this duel (required for claims). */
+  playerAddress: string;
   /** The three dealt cards for this duel (authoritative server draw). */
   hand: Card[];
-  transcript: Pick<TurnResult, "playerCard" | "aiCard">[];
+  transcript: (Pick<TurnResult, "playerCard" | "aiCard"> & { aiHintType?: AiHintType })[];
   /** Current HP + turn bookkeeping mirrored from gameEngine (JSON). */
   stateJson: string;
   expiresAtMs: number;
+  /** Hint shown to player this pick phase; validated on ai-move. */
+  lastAiHintType?: AiHintType;
   /** Prevent double issuance of signatures for AI reward mode. */
   rewardSignatureIssued?: boolean;
 }
 
 const TTL_SECONDS = 45 * 60; // 45 minutes
-
-/**
- * Returns a Redis client if UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
- * are set, otherwise falls back to the in-memory Map (local dev without Redis).
- */
-function getRedis(): Redis | null {
-  if (
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    return new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return null;
-}
-
-// ─── In-memory fallback (local dev only) ─────────────────────────────────────
-
-declare global {
-  var __DUEL_AI_SESSION__: Map<string, DuelSession> | undefined;
-}
 
 function memoryMap(): Map<string, DuelSession> {
   const g = globalThis as typeof globalThis & {
@@ -51,11 +34,13 @@ function sessionKey(duelId: string) {
   return `duel:session:${duelId}`;
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
-
-export async function createAiDuelSession(duelId: string): Promise<DuelSession> {
+export async function createAiDuelSession(
+  duelId: string,
+  playerAddress: string,
+): Promise<DuelSession> {
   const session: DuelSession = {
     duelId,
+    playerAddress: playerAddress.toLowerCase(),
     hand: [],
     transcript: [],
     stateJson: "",
@@ -75,7 +60,7 @@ export async function createAiDuelSession(duelId: string): Promise<DuelSession> 
 }
 
 export async function getAiDuelSession(
-  duelId: string | undefined
+  duelId: string | undefined,
 ): Promise<DuelSession | undefined> {
   if (!duelId) return undefined;
 
@@ -90,7 +75,6 @@ export async function getAiDuelSession(
     }
   }
 
-  // Memory fallback
   const map = memoryMap();
   const session = map.get(duelId);
   if (!session) return undefined;
@@ -102,7 +86,6 @@ export async function getAiDuelSession(
 }
 
 export async function saveAiDuelSession(session: DuelSession): Promise<void> {
-  // Refresh TTL on every write
   session.expiresAtMs = Date.now() + TTL_SECONDS * 1000;
 
   const redis = getRedis();
