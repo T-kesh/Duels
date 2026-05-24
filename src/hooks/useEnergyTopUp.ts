@@ -49,16 +49,7 @@ export function useEnergyTopUp() {
         throw new Error(err.error ?? "verification_failed");
       }
 
-      const payload = await res.json();
-      const grant = typeof payload?.bonusGrant === "number" ? payload.bonusGrant : 1;
-      try {
-        const cur = parseInt(localStorage.getItem("duel_bonus_lives") ?? "0", 10);
-        const next = Number.isFinite(cur) ? cur + grant : grant;
-        localStorage.setItem("duel_bonus_lives", `${next}`);
-      } catch {
-        // ignore quota issues
-      }
-
+      window.dispatchEvent(new Event("player-state-update"));
       window.dispatchEvent(new Event("energy-bonus-update"));
       setStatus("done");
     } catch (e) {
