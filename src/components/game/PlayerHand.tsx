@@ -9,6 +9,7 @@ interface PlayerHandProps {
   selectedCard: Card | null;
   disabled: boolean;
   showCount: boolean;
+  aiHintType?: string | null;
   onSelect: (card: Card) => void;
 }
 
@@ -18,6 +19,7 @@ export function PlayerHand({
   selectedCard,
   disabled,
   showCount,
+  aiHintType,
   onSelect,
 }: PlayerHandProps) {
   return (
@@ -39,6 +41,7 @@ export function PlayerHand({
             used={usedCardIds.has(card.id)}
             selected={selectedCard?.id === card.id}
             disabled={disabled}
+            aiHintType={aiHintType}
             onClick={() => onSelect(card)}
           />
         ))}
