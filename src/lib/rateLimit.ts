@@ -17,6 +17,11 @@ export async function checkRateLimit(
   const count = await incrRateLimit(key, windowSeconds);
 
   if (count === 0) {
+    // Redis unavailable — rate limiting is bypassed (fail-open).
+    // This is acceptable in local dev but should be alerted in production.
+    if (process.env.NODE_ENV === "production") {
+      console.warn(`[rateLimit] Redis unavailable — ${route} limit bypassed for ${address}`);
+    }
     return { allowed: true, count: 0 };
   }
 

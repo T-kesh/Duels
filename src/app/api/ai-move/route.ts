@@ -12,7 +12,7 @@ import {
   type AiHintType,
 } from "@/lib/duelSessionStore";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { grantPerfectDuelBonus, incrementWins } from "@/lib/playerStore";
+import { grantPerfectDuelBonus, incrementWins, getPlayerState } from "@/lib/playerStore";
 
 type DuelHistoryEntry = {
   won: boolean;
@@ -41,19 +41,6 @@ function parseHintType(raw: unknown): AiHintType {
   return "special";
 }
 
-function publicStateFromGameState(gameState: GameState, perfectDuelBonus = false) {
-  return {
-    playerHp: gameState.playerHp,
-    aiHp: gameState.aiHp,
-    turn: gameState.turn,
-    isOver: gameState.isOver,
-    playerWon: gameState.playerWon,
-    turnsCount: gameState.turns.length,
-    lastTurn: gameState.turns[gameState.turns.length - 1] ?? null,
-    perfectDuelBonus,
-  };
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as AiMovePayload;
@@ -80,25 +67,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "illegal_card_for_session" }, { status: 400 });
     }
 
-    const gameState = safeParseGameState(session.stateJson) ?? initGameState();
-
     const pickedIds = new Set(session.transcript.map((round) => round.playerCard.id));
     if (pickedIds.has(playerCard.id)) {
-      const lastRound = session.transcript[session.transcript.length - 1];
-      const lastTurn = gameState.turns[gameState.turns.length - 1];
-
-      if (lastRound?.playerCard.id === playerCard.id && lastTurn) {
-        return NextResponse.json({
-          card: lastRound.aiCard,
-          reasoning: "Recovered last turn.",
-          state: publicStateFromGameState(gameState),
-          recovered: true,
-        });
-      }
-
       return NextResponse.json({ error: "card_already_used" }, { status: 400 });
     }
 
+    const gameState = safeParseGameState(session.stateJson) ?? initGameState();
     if (gameState.isOver) {
       return NextResponse.json({ error: "duel_already_complete" }, { status: 400 });
     }
@@ -109,8 +83,10 @@ export async function POST(req: NextRequest) {
       playerHp: gameState.playerHp,
       turn: gameState.turn,
       aiHintType,
+      // Streak is client-supplied (cosmetic narrative only; no game outcome impact).
       streak: Number(history.streak ?? 0),
-      totalWins: Number(history.totalWins ?? 0),
+      // Use server-verified win count so the client cannot inflate CIPHER's difficulty.
+      totalWins: (await getPlayerState(session.playerAddress)).totalWins,
       recentDuels,
     });
 
@@ -132,7 +108,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const state = publicStateFromGameState(nextState, perfectDuelBonus);
+    const state = {
+      playerHp: nextState.playerHp,
+      aiHp: nextState.aiHp,
+      turn: nextState.turn,
+      isOver: nextState.isOver,
+      playerWon: nextState.playerWon,
+      turnsCount: nextState.turns.length,
+      lastTurn: nextState.turns[nextState.turns.length - 1] ?? null,
+      perfectDuelBonus,
+    };
 
     return NextResponse.json({ card, reasoning, state });
   } catch (err: unknown) {

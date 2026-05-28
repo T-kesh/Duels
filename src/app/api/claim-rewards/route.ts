@@ -56,13 +56,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "player_address_mismatch" }, { status: 403 });
     }
 
+    // Check dupe-signature BEFORE consuming a rate limit slot — retrying
+    // a claimed session should never burn the player's rate limit budget.
+    if (sessionRecord.rewardSignatureIssued) {
+      return NextResponse.json({ error: "reward_already_claimed_for_session" }, { status: 409 });
+    }
+
     const limit = await checkRateLimit("claim-rewards", playerAddress);
     if (!limit.allowed) {
       return NextResponse.json({ error: "rate_limit_exceeded" }, { status: 429 });
-    }
-
-    if (sessionRecord.rewardSignatureIssued) {
-      return NextResponse.json({ error: "reward_already_claimed_for_session" }, { status: 409 });
     }
 
     if (!sessionRecord.transcript.length) {

@@ -1,6 +1,6 @@
 import type { TurnResult } from "@/lib/gameEngine";
 import type { Card } from "@/constants/cards";
-import { getRedis } from "@/lib/redis";
+import { getRedis, safeRedisOp } from "@/lib/redis";
 
 export type AiHintType = "attack" | "defend" | "special";
 
@@ -49,13 +49,12 @@ export async function createAiDuelSession(
 
   const redis = getRedis();
   if (redis) {
-    await redis.set(sessionKey(duelId), JSON.stringify(session), {
-      ex: TTL_SECONDS,
-    });
-  } else {
-    memoryMap().set(duelId, session);
+    const ok = await safeRedisOp(() =>
+      redis.set(sessionKey(duelId), JSON.stringify(session), { ex: TTL_SECONDS }),
+    );
+    if (ok !== null) return session;
   }
-
+  memoryMap().set(duelId, session);
   return session;
 }
 
@@ -66,13 +65,15 @@ export async function getAiDuelSession(
 
   const redis = getRedis();
   if (redis) {
-    const raw = await redis.get<string>(sessionKey(duelId));
-    if (!raw) return undefined;
-    try {
-      return typeof raw === "string" ? JSON.parse(raw) : (raw as DuelSession);
-    } catch {
-      return undefined;
+    const raw = await safeRedisOp(() => redis.get<string>(sessionKey(duelId)));
+    if (raw !== null) {
+      try {
+        return typeof raw === "string" ? JSON.parse(raw) : (raw as DuelSession);
+      } catch {
+        return undefined;
+      }
     }
+    // raw === null means Redis failed — fall through to memory
   }
 
   const map = memoryMap();
@@ -90,12 +91,12 @@ export async function saveAiDuelSession(session: DuelSession): Promise<void> {
 
   const redis = getRedis();
   if (redis) {
-    await redis.set(sessionKey(session.duelId), JSON.stringify(session), {
-      ex: TTL_SECONDS,
-    });
-  } else {
-    memoryMap().set(session.duelId, session);
+    const ok = await safeRedisOp(() =>
+      redis.set(sessionKey(session.duelId), JSON.stringify(session), { ex: TTL_SECONDS }),
+    );
+    if (ok !== null) return;
   }
+  memoryMap().set(session.duelId, session);
 }
 
 /** @deprecated use saveAiDuelSession instead */

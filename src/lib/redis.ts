@@ -16,6 +16,20 @@ export function getRedis(): Redis | null {
   return redisClient;
 }
 
+/**
+ * Run a Redis operation and return its result, or null on any error.
+ * This allows callers to fall back to in-memory storage when Redis is
+ * misconfigured, unreachable, or returns an auth error.
+ */
+export async function safeRedisOp<T>(op: () => Promise<T>): Promise<T | null> {
+  try {
+    return await op();
+  } catch (err) {
+    console.warn("[redis] operation failed, falling back to memory:", err);
+    return null;
+  }
+}
+
 /** SET key only if absent; returns true when the key was set. */
 export async function setNxEx(
   key: string,
@@ -24,7 +38,7 @@ export async function setNxEx(
 ): Promise<boolean> {
   const redis = getRedis();
   if (!redis) return false;
-  const result = await redis.set(key, value, { nx: true, ex: exSeconds });
+  const result = await safeRedisOp(() => redis.set(key, value, { nx: true, ex: exSeconds }));
   return result === "OK";
 }
 
@@ -36,9 +50,11 @@ export async function incrRateLimit(
   const redis = getRedis();
   if (!redis) return 0;
 
-  const count = await redis.incr(key);
-  if (count === 1) {
-    await redis.expire(key, windowSeconds);
-  }
-  return count;
+  const count = await safeRedisOp(async () => {
+    const c = await redis.incr(key);
+    if (c === 1) await redis.expire(key, windowSeconds);
+    return c;
+  });
+
+  return count ?? 0;
 }

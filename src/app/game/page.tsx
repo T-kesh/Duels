@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 
@@ -54,19 +54,26 @@ export default function GamePage() {
 
   useEffect(() => {
     if (phase === "done") {
-      const claimState = gameState.playerWon ? "pending" : "none";
       const timer = setTimeout(() => {
+        const gs = latestGameState.current;
+        const claimState = gs.playerWon ? "pending" : "none";
         router.push(
-          `/result?won=${gameState.playerWon}&playerHp=${gameState.playerHp}&aiHp=${gameState.aiHp}&claim=${claimState}`,
+          `/result?won=${gs.playerWon}&playerHp=${gs.playerHp}&aiHp=${gs.aiHp}&claim=${claimState}`,
         );
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [phase, gameState, router]);
+  }, [phase, router]);
 
   const onCardSelect = (card: Parameters<typeof playTurn>[0]) => {
     playTurn(card, (id) => claimReward(id));
   };
+
+  // Keep a ref to the latest gameState so the delayed redirect always reads
+  // the final settled outcome, not a stale closure from the render that first
+  // set phase to "done".
+  const latestGameState = useRef(gameState);
+  latestGameState.current = gameState;
 
   const clutchTurn = phase === "pick" && gameState.turn === 3;
 

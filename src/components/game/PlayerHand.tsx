@@ -29,7 +29,9 @@ export function PlayerHand({
           Your Hand
         </span>
         {showCount && (
-          <span className="text-[9px] text-duel-gold/50 font-mono">3 / 3 CARDS</span>
+          <span className="text-[9px] text-duel-gold/50 font-mono">
+            {hand.length - usedCardIds.size} / {hand.length} CARDS
+          </span>
         )}
       </div>
 

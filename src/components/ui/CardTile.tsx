@@ -2,8 +2,15 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Card } from "@/constants/cards";
+import { Card, CARDS } from "@/constants/cards";
 import { HINT_SHIELD_BONUS, previewDamage } from "@/lib/gameEngine";
+
+/** Average shield of base-tier cards that match a given type. */
+function avgShieldForType(type: string): number {
+  const matching = CARDS.filter((c) => c.type === type);
+  if (!matching.length) return 0;
+  return Math.round(matching.reduce((sum, c) => sum + c.shield, 0) / matching.length);
+}
 
 interface CardTileProps {
   card: Card;
@@ -26,8 +33,11 @@ export function CardTile({
   className,
   aiHintType,
 }: CardTileProps) {
-  const hintShield =
-    aiHintType === "defend" ? 40 + HINT_SHIELD_BONUS : aiHintType === "attack" ? 0 : 20;
+  // Estimate CIPHER's effective shield based on the hinted card type.
+  // Uses the average shield of base-tier cards of that type from the real
+  // pool, plus HINT_SHIELD_BONUS only when the hint type would be honored.
+  const baseShield = aiHintType ? avgShieldForType(aiHintType) : 0;
+  const hintShield = aiHintType ? baseShield + HINT_SHIELD_BONUS : 0;
   const vsHint = previewDamage(card, hintShield);
   return (
     <button

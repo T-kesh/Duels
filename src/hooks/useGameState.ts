@@ -13,15 +13,11 @@ type ApiPublicState = {
   isOver: boolean;
   playerWon: boolean | null;
   lastTurn: TurnResult | null;
-  turnsCount?: number;
   perfectDuelBonus?: boolean;
 };
 
 function mergeFromApi(prev: GameState, patch: ApiPublicState): GameState {
-  const shouldAppendLastTurn =
-    Boolean(patch.lastTurn) &&
-    (typeof patch.turnsCount !== "number" || patch.turnsCount > prev.turns.length);
-  const turns = shouldAppendLastTurn && patch.lastTurn ? [...prev.turns, patch.lastTurn] : prev.turns;
+  const turns = patch.lastTurn ? [...prev.turns, patch.lastTurn] : prev.turns;
   return {
     playerHp: patch.playerHp,
     aiHp: patch.aiHp,
@@ -64,6 +60,7 @@ export function useGameState() {
 
     setDealingDeck(true);
     setStartupError(null);
+    setTurnError(null);
 
     try {
       const res = await fetch("/api/start-duel", {
@@ -217,9 +214,40 @@ export function useGameState() {
       } catch (err: unknown) {
         console.error("Game error:", err);
 
+        const errorCode = err instanceof Error ? err.message : "";
+
+        // Session-fatal errors: the duel is unrecoverable server-side.
+        // Reset to draw phase so the player can start a fresh duel cleanly.
+        const isFatal =
+          errorCode === "unknown_or_expired_duel" ||
+          errorCode === "duel_already_complete" ||
+          errorCode === "illegal_card_for_session";
+
+        if (isFatal) {
+          setDuelId(null);
+          setHand([]);
+          setUsedCardIds(new Set());
+          setGameState(initGameState());
+          setTurnError(
+            errorCode === "unknown_or_expired_duel"
+              ? "Duel session expired — start a new duel."
+              : errorCode === "duel_already_complete"
+              ? "This duel has already ended. Start a new one."
+              : "Invalid move detected. Duel reset.",
+          );
+          setPhase("draw");
+          return;
+        }
+
         const msg =
           err instanceof DOMException && err.name === "AbortError"
             ? "CIPHER took too long to respond. Tap your card again."
+            : errorCode === "rate_limit_exceeded"
+            ? "Too many moves — slow down and try again."
+            : errorCode === "card_already_used"
+            ? "That card was already played this duel."
+            : errorCode === "missing_duel_session"
+            ? "Session missing. Please start a new duel."
             : "Connection lost. Tap your card to retry.";
 
         setTurnError(msg);

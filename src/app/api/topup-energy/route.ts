@@ -106,11 +106,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "misconfigured_topup_treasury" }, { status: 500 });
     }
 
-    const consumed = await markTxConsumed(hash);
-    if (!consumed) {
-      return NextResponse.json({ error: "tx_already_consumed" }, { status: 409 });
-    }
-
+    // Verify receipt BEFORE marking consumed so a transient RPC failure
+    // does not permanently burn the tx hash in Redis.
     const rpc = clientRpc();
 
     const receipt = await rpc.getTransactionReceipt({ hash }).catch(() => undefined);
@@ -130,6 +127,13 @@ export async function POST(req: NextRequest) {
 
     if (!match) {
       return NextResponse.json({ error: "transfer_mismatch_or_insufficient_amount" }, { status: 400 });
+    }
+
+    // Mark consumed only after we know the tx is valid (SET NX is atomic;
+    // concurrent requests hitting this point will race safely).
+    const consumed = await markTxConsumed(hash);
+    if (!consumed) {
+      return NextResponse.json({ error: "tx_already_consumed" }, { status: 409 });
     }
 
     const normalized = parsePlayerAddress(player);

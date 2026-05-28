@@ -1,4 +1,4 @@
-import { getRedis } from "@/lib/redis";
+import { getRedis, safeRedisOp } from "@/lib/redis";
 
 export const MAX_LIVES = 5;
 export const RECHARGE_TIME_MS = 4 * 60 * 60 * 1000;
@@ -46,19 +46,23 @@ async function loadStored(address: string): Promise<StoredPlayer> {
   const key = playerKey(address);
 
   if (redis) {
-    const raw = await redis.get<string>(key);
-    if (raw) {
-      try {
-        return typeof raw === "string"
-          ? (JSON.parse(raw) as StoredPlayer)
-          : (raw as StoredPlayer);
-      } catch {
-        return defaultStored();
+    const raw = await safeRedisOp(() => redis.get<string>(key));
+    if (raw !== null) {
+      if (raw) {
+        try {
+          return typeof raw === "string"
+            ? (JSON.parse(raw) as StoredPlayer)
+            : (raw as StoredPlayer);
+        } catch {
+          return defaultStored();
+        }
       }
+      // raw is empty string (key missing in Redis) — seed fresh record
+      const fresh = defaultStored();
+      await safeRedisOp(() => redis.set(key, JSON.stringify(fresh)));
+      return fresh;
     }
-    const fresh = defaultStored();
-    await redis.set(key, JSON.stringify(fresh));
-    return fresh;
+    // safeRedisOp returned null (Redis error) — fall through to memory
   }
 
   const map = memoryPlayers();
@@ -71,10 +75,10 @@ async function saveStored(address: string, data: StoredPlayer): Promise<void> {
   const key = playerKey(address);
 
   if (redis) {
-    await redis.set(key, JSON.stringify(data));
-  } else {
-    memoryPlayers().set(key, { ...data });
+    const ok = await safeRedisOp(() => redis.set(key, JSON.stringify(data)));
+    if (ok !== null) return;
   }
+  memoryPlayers().set(key, { ...data });
 }
 
 function applyRecharge(data: StoredPlayer, now = Date.now()): PlayerState {
