@@ -46,23 +46,33 @@ async function loadStored(address: string): Promise<StoredPlayer> {
   const key = playerKey(address);
 
   if (redis) {
-    const raw = await safeRedisOp(() => redis.get<string>(key));
-    if (raw !== null) {
-      if (raw) {
+    // Read inside its own try/catch so we can distinguish a genuinely MISSING
+    // key (Upstash returns null/undefined → seed a fresh record) from a Redis
+    // ERROR (throws → fall through to the in-memory store). safeRedisOp would
+    // collapse both to null, which previously made the seed branch dead code
+    // and silently reset existing players to full energy on transient errors.
+    try {
+      const raw = await redis.get<string | StoredPlayer>(key);
+
+      if (raw === null || raw === undefined) {
+        const fresh = defaultStored();
+        await safeRedisOp(() => redis.set(key, JSON.stringify(fresh)));
+        return fresh;
+      }
+
+      if (typeof raw === "string") {
         try {
-          return typeof raw === "string"
-            ? (JSON.parse(raw) as StoredPlayer)
-            : (raw as StoredPlayer);
+          return JSON.parse(raw) as StoredPlayer;
         } catch {
           return defaultStored();
         }
       }
-      // raw is empty string (key missing in Redis) — seed fresh record
-      const fresh = defaultStored();
-      await safeRedisOp(() => redis.set(key, JSON.stringify(fresh)));
-      return fresh;
+
+      return raw as StoredPlayer;
+    } catch (err) {
+      console.warn("[playerStore] Redis read failed, falling back to memory:", err);
+      // fall through to memory
     }
-    // safeRedisOp returned null (Redis error) — fall through to memory
   }
 
   const map = memoryPlayers();
@@ -169,6 +179,12 @@ export async function grantBonus(address: string, amount = 1): Promise<PlayerSta
   stored.bonusLives += amount;
   await saveStored(address, stored);
   return getPlayerState(address);
+}
+
+/** Read-only lifetime win count — does not recharge energy or write back. */
+export async function getTotalWins(address: string): Promise<number> {
+  const stored = await loadStored(address);
+  return stored.totalWins;
 }
 
 export async function incrementWins(address: string): Promise<number> {

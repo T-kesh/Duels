@@ -4,6 +4,10 @@ const LIMITS = {
   "start-duel": { max: 10, windowSeconds: 3600 },
   "ai-move": { max: 30, windowSeconds: 3600 },
   "claim-rewards": { max: 5, windowSeconds: 3600 },
+  "pvp-auth": { max: 20, windowSeconds: 3600 },
+  "pvp-move": { max: 120, windowSeconds: 3600 },
+  "pvp-state": { max: 600, windowSeconds: 3600 },
+  "pvp-claim": { max: 10, windowSeconds: 3600 },
 } as const;
 
 export type RateLimitRoute = keyof typeof LIMITS;

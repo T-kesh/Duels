@@ -102,11 +102,18 @@ export function drawHand(wins: number = 0): Card[] {
   return drawHandWithRng(wins, Math.random);
 }
 
-/** Cryptographically-strong friendly shuffle hook for `/api/start-duel`. */
+/**
+ * Draw a hand using an injected RNG. `/api/start-duel` passes a crypto RNG.
+ * Uses Fisher–Yates for a uniform, unbiased permutation — a `sort(() => rng - 0.5)`
+ * comparator does NOT produce a uniform shuffle (and its behavior is engine-dependent).
+ */
 export function drawHandWithRng(wins: number, random: () => number): Card[] {
   const pool = getTieredPool(wins);
-  const shuffled = [...pool].sort(() => random() - 0.5);
-  return shuffled.slice(0, 3);
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, 3);
 }
 
 export const STARTING_HP = 100;
