@@ -12,7 +12,7 @@ import {
   type AiHintType,
 } from "@/lib/duelSessionStore";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { grantPerfectDuelBonus, incrementWins, getPlayerState } from "@/lib/playerStore";
+import { grantPerfectDuelBonus, incrementWins, getTotalWins } from "@/lib/playerStore";
 
 type DuelHistoryEntry = {
   won: boolean;
@@ -62,13 +62,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "rate_limit_exceeded" }, { status: 429 });
     }
 
-    const dealtIds = session.hand.map((c) => c.id);
-    if (!dealtIds.includes(playerCard.id)) {
+    // Resolve the authoritative card from the server-dealt hand. The client
+    // only supplies an id; its damage/shield values are NEVER trusted, or a
+    // player could inflate stats and forge a winning (claimable) transcript.
+    const authoritativeCard = session.hand.find((c) => c.id === playerCard.id);
+    if (!authoritativeCard) {
       return NextResponse.json({ error: "illegal_card_for_session" }, { status: 400 });
     }
 
     const pickedIds = new Set(session.transcript.map((round) => round.playerCard.id));
-    if (pickedIds.has(playerCard.id)) {
+    if (pickedIds.has(authoritativeCard.id)) {
       return NextResponse.json({ error: "card_already_used" }, { status: 400 });
     }
 
@@ -78,7 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = buildCipherPrompt({
-      playerCard,
+      playerCard: authoritativeCard,
       aiHp: gameState.aiHp,
       playerHp: gameState.playerHp,
       turn: gameState.turn,
@@ -86,15 +89,15 @@ export async function POST(req: NextRequest) {
       // Streak is client-supplied (cosmetic narrative only; no game outcome impact).
       streak: Number(history.streak ?? 0),
       // Use server-verified win count so the client cannot inflate CIPHER's difficulty.
-      totalWins: (await getPlayerState(session.playerAddress)).totalWins,
+      totalWins: await getTotalWins(session.playerAddress),
       recentDuels,
     });
 
     const { card, reasoning } = await fetchCipherPick(prompt);
 
-    const nextState = resolveTurn(gameState, playerCard, card, aiHintType);
+    const nextState = resolveTurn(gameState, authoritativeCard, card, aiHintType);
 
-    session.transcript.push({ playerCard, aiCard: card, aiHintType });
+    session.transcript.push({ playerCard: authoritativeCard, aiCard: card, aiHintType });
     session.stateJson = JSON.stringify(nextState);
     session.lastAiHintType = aiHintType;
     await saveAiDuelSession(session);

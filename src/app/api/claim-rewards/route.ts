@@ -7,6 +7,13 @@ import { initGameState, resolveTurn, type GameState, type AiHintType } from "@/l
 import { getAiDuelSession, saveAiDuelSession } from "@/lib/duelSessionStore";
 import { parsePlayerAddress } from "@/lib/addresses";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { getRedis, setNxEx } from "@/lib/redis";
+
+const CLAIM_LOCK_TTL_SECONDS = 60 * 60; // matches session TTL window
+
+function claimLockKey(duelId: string) {
+  return `claim:lock:${duelId}`;
+}
 
 interface ClaimPayload {
   playerAddress?: string;
@@ -91,8 +98,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
     }
 
+    // Atomic single-issuance gate. The early `rewardSignatureIssued` check is a
+    // fast-path, but two concurrent requests can both pass it before either
+    // saves. A Redis SET NX lock (acquired only now that we're committed to
+    // signing) guarantees exactly one signature is minted per duel across
+    // serverless instances. When Redis is absent (local dev) we fall back to
+    // the in-memory `rewardSignatureIssued` flag set below.
+    const redis = getRedis();
+    if (redis) {
+      const locked = await setNxEx(claimLockKey(duelId), playerAddress, CLAIM_LOCK_TTL_SECONDS);
+      if (!locked) {
+        return NextResponse.json({ error: "reward_already_claimed_for_session" }, { status: 409 });
+      }
+    }
+
     const nonce = ethers.keccak256(
-      ethers.solidityPacked(["address", "uint256"], [playerAddress, Date.now()]),
+      ethers.solidityPacked(
+        ["address", "bytes32"],
+        [playerAddress, ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`],
+      ),
     );
 
     const wallet = new ethers.Wallet(privateKey);

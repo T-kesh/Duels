@@ -85,6 +85,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "missing_player" }, { status: 400 });
     }
 
+    // Validate before getAddress(), which throws on malformed input — without
+    // this guard a bad address surfaces as a generic 500 instead of a 400.
+    const normalizedPlayer = parsePlayerAddress(playerRaw);
+    if (!normalizedPlayer) {
+      return NextResponse.json({ error: "invalid_player_address" }, { status: 400 });
+    }
+
     const player = getAddress(playerRaw as Hex);
     const treasuryEnv =
       process.env.TOPUP_TREASURY ??
@@ -136,10 +143,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "tx_already_consumed" }, { status: 409 });
     }
 
-    const normalized = parsePlayerAddress(player);
-    if (normalized) {
-      await grantBonus(normalized, 1);
-    }
+    await grantBonus(normalizedPlayer, 1);
 
     return NextResponse.json({ ok: true, bonusGrant: 1 });
   } catch (err) {
