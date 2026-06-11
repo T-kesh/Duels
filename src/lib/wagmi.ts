@@ -5,7 +5,7 @@
 // const walletConnectProjectId = "d3f4a2c8e4f1b9a5c6d7e8f9a0b1c2d3";
 
 // export const config = createConfig({
-//   chains: [celoAlfajores, celo],
+//   chains: [celo, celoAlfajores],
 //   connectors: [
 //     injected({
 //       target: "coinbaseWallet",
@@ -37,9 +37,10 @@ import { celo, celoAlfajores } from "wagmi/chains";
 import { injected } from "wagmi/connectors";
 
 export const config = createConfig({
-  chains: [celoAlfajores, celo],
+  chains: [celo, celoAlfajores],
   connectors: [
-    injected(), // catches MiniPay's window.ethereum automatically
+    injected({ target: "metaMask" }), // explicit MetaMask
+    injected(),                         // MiniPay + any other injected wallet
   ],
   transports: {
     [celo.id]: http(),
