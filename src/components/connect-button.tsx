@@ -3,6 +3,18 @@
 import { useEffect, useState } from "react";
 import { useConnect, useAccount, useDisconnect } from "wagmi";
 import { GlowButton } from "./ui/GlowButton";
+
+function connectorLabel(id: string, name: string): string {
+  if (id === "metaMask" || name.toLowerCase().includes("metamask")) return "MetaMask";
+  if (name.toLowerCase().includes("minipay")) return "MiniPay";
+  return name || "Connect Wallet";
+}
+
+function connectorIcon(id: string, name: string): string {
+  if (id === "metaMask" || name.toLowerCase().includes("metamask")) return "🦊";
+  return "👛";
+}
+
 export function ConnectButton() {
   const { connect, connectors, isPending } = useConnect();
   const { isConnected, address } = useAccount();
@@ -45,18 +57,47 @@ export function ConnectButton() {
     );
   }
 
+  // Deduplicate — MetaMask and the generic injected connector both resolve to
+  // the same window.ethereum when MetaMask is the active wallet. Show MetaMask
+  // first; skip the generic "injected" entry if MetaMask is available.
+  const metaMaskConnector = connectors.find(
+    (c) => c.id === "metaMask" || c.name.toLowerCase().includes("metamask"),
+  );
+  const visibleConnectors = metaMaskConnector
+    ? [metaMaskConnector]
+    : connectors.filter((c) => c.id !== "injected" || connectors.length === 1);
+
   return (
     <div className="flex flex-col gap-3 w-full max-w-[280px]">
-      {connectors.map((connector) => (
+      {visibleConnectors.map((connector) => (
         <GlowButton
           key={connector.uid}
           onClick={() => connect({ connector })}
           disabled={isPending}
           className="w-full"
         >
-          {isPending ? "Connecting..." : "Connect Wallet"}
+          {isPending
+            ? "Connecting..."
+            : `${connectorIcon(connector.id, connector.name)} Connect with ${connectorLabel(connector.id, connector.name)}`}
         </GlowButton>
       ))}
+      {/* Show all other available connectors below MetaMask */}
+      {metaMaskConnector &&
+        connectors
+          .filter((c) => c.uid !== metaMaskConnector.uid && c.id !== "injected")
+          .map((connector) => (
+            <GlowButton
+              key={connector.uid}
+              variant="outline"
+              onClick={() => connect({ connector })}
+              disabled={isPending}
+              className="w-full"
+            >
+              {isPending
+                ? "Connecting..."
+                : `${connectorIcon(connector.id, connector.name)} ${connectorLabel(connector.id, connector.name)}`}
+            </GlowButton>
+          ))}
     </div>
   );
 }
