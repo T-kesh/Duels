@@ -65,15 +65,14 @@ export async function getAiDuelSession(
 
   const redis = getRedis();
   if (redis) {
-    const raw = await safeRedisOp(() => redis.get<string>(sessionKey(duelId)));
-    if (raw !== null) {
-      try {
-        return typeof raw === "string" ? JSON.parse(raw) : (raw as DuelSession);
-      } catch {
-        return undefined;
-      }
+    try {
+      const raw = await redis.get<string | DuelSession>(sessionKey(duelId));
+      if (raw === null || raw === undefined) return undefined;
+      return typeof raw === "string" ? (JSON.parse(raw) as DuelSession) : raw;
+    } catch (err) {
+      console.warn("[duelSessionStore] Redis read failed, falling back to memory:", err);
+      // fall through to memory
     }
-    // raw === null means Redis failed — fall through to memory
   }
 
   const map = memoryMap();
