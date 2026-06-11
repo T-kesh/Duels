@@ -111,8 +111,14 @@ export async function setPvpToken(duelId: string, slot: PvpSlot, hash: string): 
 export async function getPvpToken(duelId: string, slot: PvpSlot): Promise<string | undefined> {
   const redis = getRedis();
   if (redis) {
-    const raw = await safeRedisOp(() => redis.get<string>(tokenKey(duelId, slot)));
-    if (raw !== null) return raw ?? undefined;
+    try {
+      const raw = await redis.get<string>(tokenKey(duelId, slot));
+      if (raw === null || raw === undefined) return undefined;
+      return raw;
+    } catch (err) {
+      console.warn("[pvpSessionStore] Redis token read failed, falling back to memory:", err);
+      // fall through to memory
+    }
   }
   return memoryKV().get(tokenKey(duelId, slot));
 }
@@ -142,10 +148,16 @@ export async function getPvpPick(
   slot: PvpSlot,
 ): Promise<Card | undefined> {
   const redis = getRedis();
-  let raw: string | null | undefined;
+  let raw: string | undefined;
   if (redis) {
-    raw = await safeRedisOp(() => redis.get<string>(pickKey(duelId, round, slot)));
-    if (raw === null) raw = memoryKV().get(pickKey(duelId, round, slot));
+    try {
+      const result = await redis.get<string>(pickKey(duelId, round, slot));
+      if (result === null || result === undefined) return undefined;
+      raw = result;
+    } catch (err) {
+      console.warn("[pvpSessionStore] Redis pick read failed, falling back to memory:", err);
+      raw = memoryKV().get(pickKey(duelId, round, slot));
+    }
   } else {
     raw = memoryKV().get(pickKey(duelId, round, slot));
   }
@@ -197,10 +209,14 @@ export async function consumeChallengeNonce(
   const key = challengeKey(duelId, address);
   const redis = getRedis();
   if (redis) {
-    const raw = await safeRedisOp(() => redis.get<string>(key));
-    if (raw !== null) {
+    try {
+      const raw = await redis.get<string>(key);
+      if (raw === null || raw === undefined) return undefined;
       await safeRedisOp(() => redis.del(key));
-      return raw ?? undefined;
+      return raw;
+    } catch (err) {
+      console.warn("[pvpSessionStore] Redis nonce read failed, falling back to memory:", err);
+      // fall through to memory
     }
   }
   const kv = memoryKV();
