@@ -28,12 +28,14 @@ function MiniPayAutoConnect() {
   useEffect(() => {
     if (isConnected) return;
 
-    // Auto-connect when running inside MiniPay
+    // Auto-connect only inside MiniPay — never auto-trigger MetaMask
     const eth = window.ethereum as { isMiniPay?: boolean } | undefined;
     if (typeof window !== "undefined" && eth?.isMiniPay) {
-      const injectedConnector = connectors.find((c) => c.id === "injected");
-      if (injectedConnector) {
-        connect({ connector: injectedConnector });
+      const miniPayConnector = connectors.find(
+        (c) => c.id === "injected" && c.id !== "metaMask",
+      );
+      if (miniPayConnector) {
+        connect({ connector: miniPayConnector });
       }
     }
   }, [connect, connectors, isConnected]);
