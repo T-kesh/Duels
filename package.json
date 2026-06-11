@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -37,6 +37,7 @@
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
     "chai": "^4.5.0",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.4.1",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.21",
