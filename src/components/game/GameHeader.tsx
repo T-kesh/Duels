@@ -22,7 +22,7 @@ export function GameHeader({
       <div className="flex flex-col">
         <span className="text-xl font-bold tracking-[0.3em] text-duel-gold">DUEL</span>
         <span className="text-[9px] text-muted-foreground tracking-widest uppercase mt-1">
-          Celo Alfajores
+          Celo Mainnet
         </span>
       </div>
       <div className="flex gap-2 items-center">
