@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { createPublicClient, http, getAddress, zeroAddress, type Hex } from "viem";
-import { celoAlfajores } from "viem/chains";
+import { celo } from "viem/chains";
 
 import { DUEL_REWARDS_ABI, DUEL_REWARDS_ADDRESS } from "@/constants/contracts";
 import { drawHandWithRng } from "@/constants/cards";
@@ -35,8 +35,8 @@ export function pvpRpcClient() {
   const url =
     process.env.CELO_RPC_URL ||
     process.env.NEXT_PUBLIC_RPC_URL ||
-    celoAlfajores.rpcUrls.default.http[0];
-  return createPublicClient({ chain: celoAlfajores, transport: http(url) });
+    celo.rpcUrls.default.http[0];
+  return createPublicClient({ chain: celo, transport: http(url) });
 }
 
 function contractAddress(): Hex {
