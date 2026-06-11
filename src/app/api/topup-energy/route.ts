@@ -10,7 +10,7 @@ import {
   type Hex,
   type TransactionReceipt,
 } from "viem";
-import { celoAlfajores } from "viem/chains";
+import { celo } from "viem/chains";
 
 import { getRedis, setNxEx } from "@/lib/redis";
 import { parsePlayerAddress } from "@/lib/addresses";
@@ -40,10 +40,10 @@ function clientRpc() {
   const url =
     process.env.CELO_RPC_URL ||
     process.env.NEXT_PUBLIC_RPC_URL ||
-    celoAlfajores.rpcUrls.default.http[0];
+    celo.rpcUrls.default.http[0];
 
   return createPublicClient({
-    chain: celoAlfajores,
+    chain: celo,
     transport: http(url),
   });
 }
