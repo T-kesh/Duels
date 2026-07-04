@@ -19,7 +19,8 @@ Beat CIPHER, the AI duelist. Earn cUSD. Built for Celo Proof of Ship.
 ```bash
 npm install
 cp .env.local.example .env.local
-# Set ANTHROPIC_API_KEY, PRIVATE_KEY (operator for claim signatures), optional CELO_RPC_URL for top-up verification
+# Required: ANTHROPIC_API_KEY, PRIVATE_KEY, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+# Production (Vercel): Redis is required — in-memory session state does not survive cold starts
 npm run dev
 ```
 
@@ -45,7 +46,20 @@ Use `npx ngrok http 3000` if you need a public URL for MiniPay testing.
 
 ## Environment
 
-See [`.env.local.example`](.env.local.example): `ANTHROPIC_API_KEY`, `PRIVATE_KEY`, optional `CELO_RPC_URL`, `NEXT_PUBLIC_TOPUP_TREASURY`, `NEXT_PUBLIC_TOPUP_AMOUNT_WEI`, `NEXT_PUBLIC_CUSD_ADDRESS`.
+See [`.env.local.example`](.env.local.example).
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `UPSTASH_REDIS_REST_URL` | Production | Duel sessions, energy, rate limits |
+| `UPSTASH_REDIS_REST_TOKEN` | Production | Upstash auth |
+| `ANTHROPIC_API_KEY` | Yes | CIPHER AI moves |
+| `PRIVATE_KEY` | Yes | Reward / PvP settlement signatures |
+| `CELO_RPC_URL` | Top-up / PvP | On-chain verification |
+| `NEXT_PUBLIC_DUEL_REWARDS_ADDRESS` | Yes | Contract address |
+| `NEXT_PUBLIC_CUSD_ADDRESS` | Top-up | cUSD token |
+| `TOPUP_TREASURY` / `NEXT_PUBLIC_TOPUP_TREASURY` | Top-up | Receives refill payments |
+
+Implementation roadmap: [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ## Learn more
 

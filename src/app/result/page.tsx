@@ -20,7 +20,7 @@ function ResultContent() {
   const won = searchParams.get("won") === "true";
   const playerHp = Number(searchParams.get("playerHp") || 0);
   const aiHp = Number(searchParams.get("aiHp") || 0);
-  const claimState = searchParams.get("claim") || "none";
+  void searchParams.get("claim");
 
   return (
     <main className="min-h-screen bg-duel-bg flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">

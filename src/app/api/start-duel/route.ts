@@ -5,27 +5,48 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { drawHandWithRng } from "@/constants/cards";
 import { initGameState } from "@/lib/gameEngine";
-import { createAiDuelSession } from "@/lib/duelSessionStore";
+import { createAiDuelSession, saveAiDuelSession } from "@/lib/duelSessionStore";
+import { parsePlayerAddress } from "@/lib/addresses";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { consumeLife } from "@/lib/playerStore";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const wins = Math.max(0, Math.floor(Number(body.totalWins ?? 0)));
+    const playerAddress = parsePlayerAddress(body.playerAddress);
+    if (!playerAddress) {
+      return NextResponse.json({ error: "invalid_player_address" }, { status: 400 });
+    }
+
+    const limit = await checkRateLimit("start-duel", playerAddress);
+    if (!limit.allowed) {
+      return NextResponse.json({ error: "rate_limit_exceeded" }, { status: 429 });
+    }
+
+    const { ok, state: playerState } = await consumeLife(playerAddress);
+    if (!ok) {
+      return NextResponse.json(
+        {
+          error: "no_energy",
+          nextRechargeAt: playerState.nextRechargeAt,
+        },
+        { status: 403 },
+      );
+    }
+
     const duelId = crypto.randomUUID();
-
-    /** Double `[0,1)` draw — matches Fisher intent well enough while staying uniform-ish. */
     const rng = () => crypto.randomInt(281474976710655) / 281474976710655;
+    const hand = drawHandWithRng(playerState.totalWins, rng);
 
-
-    const hand = drawHandWithRng(wins, rng);
-
-    const session = createAiDuelSession(duelId);
+    const session = await createAiDuelSession(duelId, playerAddress);
     session.hand = hand;
     session.stateJson = JSON.stringify(initGameState());
+    await saveAiDuelSession(session);
 
     return NextResponse.json({ duelId, hand });
-  } catch (err) {
+  } catch (err: unknown) {
     console.error("/api/start-duel", err);
-    return NextResponse.json({ error: "Could not deal hand" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Could not deal hand";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

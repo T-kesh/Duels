@@ -1,5 +1,7 @@
 import { Card, STARTING_HP } from "@/constants/cards";
 
+export type AiHintType = "attack" | "defend" | "special";
+
 export interface TurnResult {
   playerCard: Card;
   aiCard: Card;
@@ -18,6 +20,9 @@ export interface GameState {
   playerWon: boolean | null;
 }
 
+export const HINT_SHIELD_BONUS = 5;
+export const CLUTCH_DAMAGE_MULTIPLIER = 1.1;
+
 export function initGameState(): GameState {
   return {
     playerHp: STARTING_HP,
@@ -29,16 +34,38 @@ export function initGameState(): GameState {
   };
 }
 
+/** Damage dealt by attacker against defender shield (+ optional AI hint bonus shield). */
+export function calcDamageDealt(
+  attackerDamage: number,
+  defenderShield: number,
+  extraDefenderShield = 0,
+): number {
+  return Math.max(0, attackerDamage - defenderShield - extraDefenderShield);
+}
+
+/** Preview damage this card deals against a defender shield value. */
+export function previewDamage(attacker: Card, defenderShield: number, extraDefenderShield = 0): number {
+  return calcDamageDealt(attacker.damage, defenderShield, extraDefenderShield);
+}
+
 export function resolveTurn(
   state: GameState,
   playerCard: Card,
-  aiCard: Card
+  aiCard: Card,
+  aiHintType?: AiHintType,
 ): GameState {
   const { playerHp, aiHp } = state;
+  const isClutchTurn = state.turn === 3;
+  const hintHonored = Boolean(aiHintType && aiCard.type === aiHintType);
+  const aiBonusShield = hintHonored ? HINT_SHIELD_BONUS : 0;
 
-  // Damage dealt = attacker damage - defender shield (min 0)
-  const playerDamageDealt = Math.max(0, playerCard.damage - aiCard.shield);
-  const aiDamageDealt = Math.max(0, aiCard.damage - playerCard.shield);
+  let playerDamageDealt = calcDamageDealt(playerCard.damage, aiCard.shield, aiBonusShield);
+  let aiDamageDealt = calcDamageDealt(aiCard.damage, playerCard.shield);
+
+  if (isClutchTurn) {
+    playerDamageDealt = Math.floor(playerDamageDealt * CLUTCH_DAMAGE_MULTIPLIER);
+    aiDamageDealt = Math.floor(aiDamageDealt * CLUTCH_DAMAGE_MULTIPLIER);
+  }
 
   const newPlayerHp = Math.max(0, playerHp - aiDamageDealt);
   const newAiHp = Math.max(0, aiHp - playerDamageDealt);
@@ -46,12 +73,11 @@ export function resolveTurn(
   const newTurn = state.turn + 1;
   const isOver = newTurn > 3 || newPlayerHp <= 0 || newAiHp <= 0;
 
-  // Determine winner — if game ends, higher HP wins; ties go to player
   let playerWon: boolean | null = null;
   if (isOver) {
     if (newPlayerHp > newAiHp) playerWon = true;
     else if (newAiHp > newPlayerHp) playerWon = false;
-    else playerWon = true; // tie = player wins (house is generous for MVP)
+    else playerWon = true;
   }
 
   const turnResult: TurnResult = {

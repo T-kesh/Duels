@@ -1,15 +1,44 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useAccount } from "wagmi";
 import type { Card } from "@/constants/cards";
-import { initGameState, type GameState } from "@/lib/gameEngine";
+import { initGameState, type GameState, type TurnResult } from "@/lib/gameEngine";
 import { pushRecentDuelOutcome, readRecentDuels } from "@/lib/recentDuels";
 
+type ApiPublicState = {
+  playerHp: number;
+  aiHp: number;
+  turn: number;
+  isOver: boolean;
+  playerWon: boolean | null;
+  lastTurn: TurnResult | null;
+  perfectDuelBonus?: boolean;
+};
+
+function mergeFromApi(prev: GameState, patch: ApiPublicState): GameState {
+  const turns = patch.lastTurn ? [...prev.turns, patch.lastTurn] : prev.turns;
+  return {
+    playerHp: patch.playerHp,
+    aiHp: patch.aiHp,
+    turn: patch.turn,
+    isOver: patch.isOver,
+    playerWon: patch.playerWon,
+    turns,
+  };
+}
+
 export function useGameState() {
+  const { address } = useAccount();
   const [duelId, setDuelId] = useState<string | null>(null);
   const [hand, setHand] = useState<Card[]>([]);
   const [startupError, setStartupError] = useState<string | null>(null);
-  const [dealingDeck, setDealingDeck] = useState<boolean>(true);
+  const [dealingDeck, setDealingDeck] = useState<boolean>(false);
+  const [lastDamageFlash, setLastDamageFlash] = useState<{
+    player: number;
+    ai: number;
+  } | null>(null);
+  const [perfectDuelToast, setPerfectDuelToast] = useState(false);
 
   const [gameState, setGameState] = useState<GameState>(initGameState);
   const [phase, setPhase] = useState<"draw" | "pick" | "resolve" | "done">("draw");
@@ -19,44 +48,52 @@ export function useGameState() {
   const [isLoading, setIsLoading] = useState(false);
   const [usedCardIds, setUsedCardIds] = useState<Set<string>>(new Set());
   const [aiHintType, setAiHintType] = useState<string | null>(null);
+  const [turnError, setTurnError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function deal() {
-      setDealingDeck(true);
-      setStartupError(null);
-      try {
-        const totalWins = parseInt(localStorage.getItem("duel_total_wins") ?? "0", 10);
-        const res = await fetch("/api/start-duel", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ totalWins }),
-        });
+  const turnInFlight = useRef(false);
 
-        const payload = await res.json();
-
-        if (!res.ok) {
-          throw new Error(payload.error ?? `HTTP ${res.status}`);
-        }
-
-        if (cancelled) return;
-
-        setDuelId(payload.duelId);
-        setHand(payload.hand);
-        setGameState(initGameState());
-      } catch (e) {
-        console.error(e);
-        if (!cancelled) setStartupError("Could not securely deal a duel. Refresh to retry.");
-      } finally {
-        if (!cancelled) setDealingDeck(false);
-      }
+  const beginDuel = useCallback(async () => {
+    if (!address) {
+      setStartupError("Connect your wallet to duel.");
+      return false;
     }
 
-    deal();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    setDealingDeck(true);
+    setStartupError(null);
+    setTurnError(null);
+
+    try {
+      const res = await fetch("/api/start-duel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerAddress: address }),
+      });
+
+      const payload = await res.json();
+
+      if (!res.ok) {
+        if (payload.error === "no_energy") {
+          throw new Error("Out of energy. Wait for recharge or top up.");
+        }
+        throw new Error(payload.error ?? `HTTP ${res.status}`);
+      }
+
+      setDuelId(payload.duelId);
+      setHand(payload.hand);
+      setGameState(initGameState());
+      setUsedCardIds(new Set());
+      window.dispatchEvent(new Event("player-state-update"));
+      return true;
+    } catch (e) {
+      console.error(e);
+      setStartupError(
+        e instanceof Error ? e.message : "Could not securely deal a duel. Try again.",
+      );
+      return false;
+    } finally {
+      setDealingDeck(false);
+    }
+  }, [address]);
 
   useEffect(() => {
     if (phase === "pick") {
@@ -67,12 +104,16 @@ export function useGameState() {
   }, [phase]);
 
   const playTurn = useCallback(
-    async (playerCard: Card, onWin?: (due: string | null) => void) => {
+    async (playerCard: Card, onWin?: (id: string | null) => void) => {
       if (!duelId) return;
-      if (isLoading || usedCardIds.has(playerCard.id)) return;
+      if (turnInFlight.current || usedCardIds.has(playerCard.id)) return;
 
+      turnInFlight.current = true;
       setIsLoading(true);
       setSelectedCard(playerCard);
+      setAiCard(null);
+      setAiReasoning("");
+      setTurnError(null);
       setPhase("resolve");
 
       try {
@@ -81,6 +122,9 @@ export function useGameState() {
           playerHp,
           aiHp,
         }));
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 25_000);
 
         const res = await fetch("/api/ai-move", {
           method: "POST",
@@ -95,11 +139,14 @@ export function useGameState() {
             },
             recentDuels: recent,
           }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeout);
 
         const data = await res.json();
 
-        if (!res.ok || !data?.card || !data?.gameState) {
+        if (!res.ok || !data?.card || !data?.state) {
           throw new Error(data?.error ?? "ai_move_failed");
         }
 
@@ -108,11 +155,22 @@ export function useGameState() {
 
         await new Promise((r) => setTimeout(r, 1200));
 
-        const nextSnap = data.gameState as GameState;
-        setGameState(nextSnap);
+        const patch = data.state as ApiPublicState;
+        let nextSnap!: GameState;
 
-        const usedTurnId = playerCard.id;
-        setUsedCardIds((prev) => new Set([...prev, usedTurnId]));
+        setGameState((prev) => {
+          nextSnap = mergeFromApi(prev, patch);
+          if (patch.lastTurn) {
+            setLastDamageFlash({
+              player: patch.lastTurn.aiDamageDealt,
+              ai: patch.lastTurn.playerDamageDealt,
+            });
+            setTimeout(() => setLastDamageFlash(null), 1200);
+          }
+          return nextSnap;
+        });
+
+        setUsedCardIds((prev) => new Set([...prev, playerCard.id]));
 
         if (nextSnap.isOver) {
           pushRecentDuelOutcome({
@@ -133,6 +191,12 @@ export function useGameState() {
             const wins = parseInt(localStorage.getItem("duel_total_wins") ?? "0", 10) + 1;
             localStorage.setItem("duel_total_wins", wins.toString());
 
+            if (patch.perfectDuelBonus) {
+              setPerfectDuelToast(true);
+              setTimeout(() => setPerfectDuelToast(false), 4000);
+              window.dispatchEvent(new Event("player-state-update"));
+            }
+
             onWin?.(duelId);
           } else {
             localStorage.setItem("duel_streak", "0");
@@ -147,14 +211,59 @@ export function useGameState() {
             setPhase("pick");
           }, 1800);
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error("Game error:", err);
-        setPhase("pick");
+
+        const errorCode = err instanceof Error ? err.message : "";
+
+        // Session-fatal errors: the duel is unrecoverable server-side.
+        // Reset to draw phase so the player can start a fresh duel cleanly.
+        const isFatal =
+          errorCode === "unknown_or_expired_duel" ||
+          errorCode === "duel_already_complete" ||
+          errorCode === "illegal_card_for_session";
+
+        if (isFatal) {
+          setDuelId(null);
+          setHand([]);
+          setUsedCardIds(new Set());
+          setGameState(initGameState());
+          setTurnError(
+            errorCode === "unknown_or_expired_duel"
+              ? "Duel session expired — start a new duel."
+              : errorCode === "duel_already_complete"
+              ? "This duel has already ended. Start a new one."
+              : "Invalid move detected. Duel reset.",
+          );
+          setPhase("draw");
+          return;
+        }
+
+        const msg =
+          err instanceof DOMException && err.name === "AbortError"
+            ? "CIPHER took too long to respond. Tap your card again."
+            : errorCode === "rate_limit_exceeded"
+            ? "Too many moves — slow down and try again."
+            : errorCode === "card_already_used"
+            ? "That card was already played this duel."
+            : errorCode === "missing_duel_session"
+            ? "Session missing. Please start a new duel."
+            : "Connection lost. Tap your card to retry.";
+
+        setTurnError(msg);
+        setAiCard(null);
+        setAiReasoning("");
+
+        setTimeout(() => {
+          setSelectedCard(null);
+          setPhase("pick");
+        }, 600);
       } finally {
         setIsLoading(false);
+        turnInFlight.current = false;
       }
     },
-    [isLoading, usedCardIds, duelId, aiHintType],
+    [usedCardIds, duelId, aiHintType],
   );
 
   return {
@@ -171,6 +280,10 @@ export function useGameState() {
     isLoading,
     usedCardIds,
     aiHintType,
+    turnError,
+    lastDamageFlash,
+    perfectDuelToast,
+    beginDuel,
     playTurn,
   };
 }

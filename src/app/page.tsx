@@ -1,15 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { celo } from "wagmi/chains";
 import { useRouter } from "next/navigation";
 import { ConnectButton } from "@/components/connect-button";
 import { GlowButton } from "@/components/ui/GlowButton";
 
 export default function Home() {
   const { isConnected } = useAccount();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const router = useRouter();
   const [streak, setStreak] = useState(0);
+
+  const wrongNetwork = isConnected && chainId !== celo.id;
 
   useEffect(() => {
     const s = parseInt(localStorage.getItem('duel_streak') || '0');
@@ -65,6 +70,21 @@ export default function Home() {
             ))}
           </ul>
         </div>
+
+        {/* Wrong network banner */}
+        {wrongNetwork && (
+          <div className="glass border-destructive/30 px-4 py-3 rounded-xl mb-6 text-center space-y-2">
+            <p className="text-[11px] text-destructive font-bold tracking-widest uppercase">Wrong Network</p>
+            <p className="text-[10px] text-muted-foreground">Switch to Celo Mainnet to play.</p>
+            <GlowButton
+              variant="outline"
+              size="sm"
+              onClick={() => switchChain({ chainId: celo.id })}
+            >
+              Switch to Celo
+            </GlowButton>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex flex-col gap-4 items-center w-full">

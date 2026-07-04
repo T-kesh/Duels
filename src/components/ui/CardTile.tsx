@@ -2,7 +2,15 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Card } from "@/constants/cards";
+import { Card, CARDS } from "@/constants/cards";
+import { HINT_SHIELD_BONUS, previewDamage } from "@/lib/gameEngine";
+
+/** Average shield of base-tier cards that match a given type. */
+function avgShieldForType(type: string): number {
+  const matching = CARDS.filter((c) => c.type === type);
+  if (!matching.length) return 0;
+  return Math.round(matching.reduce((sum, c) => sum + c.shield, 0) / matching.length);
+}
 
 interface CardTileProps {
   card: Card;
@@ -12,6 +20,8 @@ interface CardTileProps {
   disabled?: boolean;
   className?: string;
   isRevealed?: boolean;
+  /** When set, show damage preview vs a hinted defend (honest hint). */
+  aiHintType?: string | null;
 }
 
 export function CardTile({
@@ -21,8 +31,14 @@ export function CardTile({
   selected,
   disabled,
   className,
-  isRevealed = true,
+  aiHintType,
 }: CardTileProps) {
+  // Estimate CIPHER's effective shield based on the hinted card type.
+  // Uses the average shield of base-tier cards of that type from the real
+  // pool, plus HINT_SHIELD_BONUS only when the hint type would be honored.
+  const baseShield = aiHintType ? avgShieldForType(aiHintType) : 0;
+  const hintShield = aiHintType ? baseShield + HINT_SHIELD_BONUS : 0;
+  const vsHint = previewDamage(card, hintShield);
   return (
     <button
       onClick={onClick}
@@ -40,16 +56,17 @@ export function CardTile({
         used && "opacity-30 grayscale cursor-not-allowed",
         !used && !disabled && "hover:border-duel-gold/40 hover:bg-white/5 hover:-translate-y-1 cursor-pointer",
       )}>
-        {/* Tier Badge */}
         <div className="absolute top-2 right-2">
-          {card.tier > 1 && (
-            <span className={cn(
+          <span
+            className={cn(
               "text-[7px] font-bold px-1 py-0.5 rounded uppercase tracking-tighter",
-              card.tier === 2 ? "bg-slate-400/20 text-slate-300" : "bg-duel-gold/20 text-duel-gold"
-            )}>
-              T{card.tier}
-            </span>
-          )}
+              card.tier === 1 && "bg-white/10 text-muted-foreground",
+              card.tier === 2 && "bg-slate-400/20 text-slate-300",
+              card.tier >= 3 && "bg-duel-gold/20 text-duel-gold",
+            )}
+          >
+            {card.tier === 1 ? "I" : card.tier === 2 ? "II" : "III"}
+          </span>
         </div>
 
         {/* Card Content */}
@@ -62,12 +79,17 @@ export function CardTile({
         <div className="flex flex-wrap justify-center gap-1 mt-auto">
           {card.damage > 0 && (
             <span className="text-[8px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-md border border-destructive/20">
-              -{card.damage} HP
+              −{card.damage} ATK
             </span>
           )}
           {card.shield > 0 && (
             <span className="text-[8px] font-bold text-sky-400 bg-sky-400/10 px-1.5 py-0.5 rounded-md border border-sky-400/20">
               +{card.shield} DEF
+            </span>
+          )}
+          {aiHintType && card.damage > 0 && (
+            <span className="text-[8px] font-bold text-duel-gold/80 bg-duel-gold/10 px-1.5 py-0.5 rounded-md border border-duel-gold/20 w-full">
+              ~{vsHint} vs hint
             </span>
           )}
         </div>

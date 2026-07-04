@@ -12,19 +12,8 @@ export function useClaimReward() {
   );
 
   const claimReward = useCallback(
-    async (duelOrLegacy: string | null | Record<string, unknown>[]) => {
-      if (!address || !walletClient) return;
-
-      let duelId: string | undefined;
-      let legacyTurns: Record<string, unknown>[] | undefined;
-
-      if (Array.isArray(duelOrLegacy)) {
-        legacyTurns = duelOrLegacy;
-      } else {
-        duelId = duelOrLegacy ?? undefined;
-      }
-
-      if (!duelId && !legacyTurns?.length) return;
+    async (duelId: string | null) => {
+      if (!address || !walletClient || !duelId) return;
 
       setClaimStatus("claiming");
 
@@ -35,7 +24,6 @@ export function useClaimReward() {
           body: JSON.stringify({
             playerAddress: address,
             duelId,
-            turns: legacyTurns,
           }),
         });
 

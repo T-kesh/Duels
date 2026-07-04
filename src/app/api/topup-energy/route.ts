@@ -10,26 +10,40 @@ import {
   type Hex,
   type TransactionReceipt,
 } from "viem";
-import { celoAlfajores } from "viem/chains";
+import { celo } from "viem/chains";
 
-declare global {
-  var __TOPUP_USED_TX__: Set<string> | undefined;
-}
+import { getRedis, setNxEx } from "@/lib/redis";
+import { parsePlayerAddress } from "@/lib/addresses";
+import { grantBonus } from "@/lib/playerStore";
 
-function usedHashes(): Set<string> {
+const TOPUP_DEDUPE_TTL = 60 * 60 * 24 * 30; // 30 days
+
+function memoryUsedHashes(): Set<string> {
   const g = globalThis as typeof globalThis & { __TOPUP_USED_TX__?: Set<string> };
   if (!g.__TOPUP_USED_TX__) g.__TOPUP_USED_TX__ = new Set<string>();
   return g.__TOPUP_USED_TX__;
+}
+
+async function markTxConsumed(hash: string): Promise<boolean> {
+  const key = `topup:tx:${hash.toLowerCase()}`;
+  const redis = getRedis();
+  if (redis) {
+    return setNxEx(key, "1", TOPUP_DEDUPE_TTL);
+  }
+  const set = memoryUsedHashes();
+  if (set.has(key)) return false;
+  set.add(key);
+  return true;
 }
 
 function clientRpc() {
   const url =
     process.env.CELO_RPC_URL ||
     process.env.NEXT_PUBLIC_RPC_URL ||
-    celoAlfajores.rpcUrls.default.http[0];
+    celo.rpcUrls.default.http[0];
 
   return createPublicClient({
-    chain: celoAlfajores,
+    chain: celo,
     transport: http(url),
   });
 }
@@ -71,6 +85,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "missing_player" }, { status: 400 });
     }
 
+    // Validate before getAddress(), which throws on malformed input — without
+    // this guard a bad address surfaces as a generic 500 instead of a 400.
+    const normalizedPlayer = parsePlayerAddress(playerRaw);
+    if (!normalizedPlayer) {
+      return NextResponse.json({ error: "invalid_player_address" }, { status: 400 });
+    }
+
     const player = getAddress(playerRaw as Hex);
     const treasuryEnv =
       process.env.TOPUP_TREASURY ??
@@ -92,12 +113,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "misconfigured_topup_treasury" }, { status: 500 });
     }
 
-    const set = usedHashes();
-    const dedupeKey = hash.toLowerCase();
-    if (set.has(dedupeKey)) {
-      return NextResponse.json({ error: "tx_already_consumed" }, { status: 409 });
-    }
-
+    // Verify receipt BEFORE marking consumed so a transient RPC failure
+    // does not permanently burn the tx hash in Redis.
     const rpc = clientRpc();
 
     const receipt = await rpc.getTransactionReceipt({ hash }).catch(() => undefined);
@@ -119,7 +136,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "transfer_mismatch_or_insufficient_amount" }, { status: 400 });
     }
 
-    set.add(dedupeKey);
+    // Mark consumed only after we know the tx is valid (SET NX is atomic;
+    // concurrent requests hitting this point will race safely).
+    const consumed = await markTxConsumed(hash);
+    if (!consumed) {
+      return NextResponse.json({ error: "tx_already_consumed" }, { status: 409 });
+    }
+
+    await grantBonus(normalizedPlayer, 1);
 
     return NextResponse.json({ ok: true, bonusGrant: 1 });
   } catch (err) {

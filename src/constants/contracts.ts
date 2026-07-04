@@ -4,6 +4,35 @@ export const DUEL_REWARDS_ADDRESS =
 
 export const DUEL_REWARDS_ABI = [
   {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "duelId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "player1", type: "address" },
+      { indexed: false, internalType: "uint256", name: "wager", type: "uint256" },
+    ],
+    name: "DuelCreated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "duelId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "player2", type: "address" },
+    ],
+    name: "DuelJoined",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "uint256", name: "duelId", type: "uint256" },
+      { indexed: true, internalType: "address", name: "winner", type: "address" },
+      { indexed: false, internalType: "uint256", name: "prize", type: "uint256" },
+    ],
+    name: "DuelResolved",
+    type: "event",
+  },
+  {
     inputs: [
       { internalType: "bytes32", name: "nonce", type: "bytes32" },
       { internalType: "bytes", name: "signature", type: "bytes" },
