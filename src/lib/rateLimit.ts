@@ -2,6 +2,7 @@ import { incrRateLimit } from "@/lib/redis";
 
 const LIMITS = {
   "start-duel": { max: 10, windowSeconds: 3600 },
+  "start-duel-auth": { max: 20, windowSeconds: 3600 },
   "ai-move": { max: 30, windowSeconds: 3600 },
   "claim-rewards": { max: 5, windowSeconds: 3600 },
   "pvp-auth": { max: 20, windowSeconds: 3600 },
