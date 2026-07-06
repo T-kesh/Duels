@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { useAccount, useWalletClient, useSwitchChain } from "wagmi";
-import { celo } from "wagmi/chains";
+import { useAccount, useWalletClient } from "wagmi";
 import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
 
 export function useClaimReward() {
   const { address, connector, status: accountStatus, chainId } = useAccount();
-  const { switchChainAsync } = useSwitchChain();
   const addressRef = useRef(address);
   addressRef.current = address;
 
