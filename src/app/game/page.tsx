@@ -6,14 +6,12 @@ import { useAccount } from "wagmi";
 
 import { GlowButton } from "@/components/ui/GlowButton";
 import { BattleArena } from "@/components/ui/BattleArena";
-import { ClaimStatusStrip } from "@/components/game/ClaimStatusStrip";
 import { GameHeader } from "@/components/game/GameHeader";
 import { HealthBarsSection } from "@/components/game/HealthBarsSection";
 import { PlayerHand } from "@/components/game/PlayerHand";
 import { TurnHistory } from "@/components/game/TurnHistory";
 
 import { useGameState } from "@/hooks/useGameState";
-import { useClaimReward } from "@/hooks/useClaimReward";
 import { useEnergy } from "@/hooks/useEnergy";
 import { useEnergyTopUp } from "@/hooks/useEnergyTopUp";
 
@@ -42,7 +40,6 @@ export default function GamePage() {
     playTurn,
   } = useGameState();
 
-  const { claimStatus, claimReward } = useClaimReward();
   const { lives, bonusLives, totalPlaysRemaining, nextRechargeAt, MAX_LIVES } = useEnergy();
   const topUp = useEnergyTopUp();
 
@@ -52,28 +49,38 @@ export default function GamePage() {
     }
   }, [isConnected, router]);
 
+  // Keep refs to the latest gameState/duelId so the delayed redirect always
+  // reads the final settled values, not a stale closure from the render that
+  // first set phase to "done".
+  const latestGameState = useRef(gameState);
+  latestGameState.current = gameState;
+  const latestDuelId = useRef(duelId);
+  latestDuelId.current = duelId;
+
   useEffect(() => {
     if (phase === "done") {
       const timer = setTimeout(() => {
         const gs = latestGameState.current;
-        const claimState = gs.playerWon ? "pending" : "none";
-        router.push(
-          `/result?won=${gs.playerWon}&playerHp=${gs.playerHp}&aiHp=${gs.aiHp}&claim=${claimState}`,
-        );
+        // The reward claim itself is handled entirely on /result, where the
+        // player will actually be present to approve a wallet prompt — firing
+        // it here would orphan that request the moment this page unmounts.
+        const params = new URLSearchParams({
+          won: String(gs.playerWon),
+          playerHp: String(gs.playerHp),
+          aiHp: String(gs.aiHp),
+        });
+        if (gs.playerWon && latestDuelId.current) {
+          params.set("duelId", latestDuelId.current);
+        }
+        router.push(`/result?${params.toString()}`);
       }, 2000);
       return () => clearTimeout(timer);
     }
   }, [phase, router]);
 
   const onCardSelect = (card: Parameters<typeof playTurn>[0]) => {
-    playTurn(card, (id) => claimReward(id));
+    playTurn(card);
   };
-
-  // Keep a ref to the latest gameState so the delayed redirect always reads
-  // the final settled outcome, not a stale closure from the render that first
-  // set phase to "done".
-  const latestGameState = useRef(gameState);
-  latestGameState.current = gameState;
 
   const clutchTurn = phase === "pick" && gameState.turn === 3;
 
@@ -92,8 +99,6 @@ export default function GamePage() {
         damageFlash={lastDamageFlash}
         clutchTurn={clutchTurn}
       />
-
-      <ClaimStatusStrip status={claimStatus} />
 
       {perfectDuelToast && (
         <div className="mb-4 text-center glass border-celo-green/30 px-4 py-2 rounded-xl text-[11px] text-celo-green animate-fade-in">

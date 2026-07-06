@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useSignMessage } from "wagmi";
 import type { Card } from "@/constants/cards";
 import { initGameState, type GameState, type TurnResult } from "@/lib/gameEngine";
 import { pushRecentDuelOutcome, readRecentDuels } from "@/lib/recentDuels";
@@ -30,6 +30,7 @@ function mergeFromApi(prev: GameState, patch: ApiPublicState): GameState {
 
 export function useGameState() {
   const { address } = useAccount();
+  const { signMessageAsync } = useSignMessage();
   const [duelId, setDuelId] = useState<string | null>(null);
   const [hand, setHand] = useState<Card[]>([]);
   const [startupError, setStartupError] = useState<string | null>(null);
@@ -51,6 +52,8 @@ export function useGameState() {
   const [turnError, setTurnError] = useState<string | null>(null);
 
   const turnInFlight = useRef(false);
+  const gameStateRef = useRef(gameState);
+  gameStateRef.current = gameState;
 
   const beginDuel = useCallback(async () => {
     if (!address) {
@@ -63,10 +66,39 @@ export function useGameState() {
     setTurnError(null);
 
     try {
+      // 1. Get a one-time challenge nonce for this address.
+      const challengeRes = await fetch("/api/start-duel/challenge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      });
+      const challengePayload = await challengeRes.json();
+      if (!challengeRes.ok) {
+        throw new Error(challengePayload.error ?? `HTTP ${challengeRes.status}`);
+      }
+
+      // 2. Prove wallet ownership by signing the challenge message. This is a
+      // read-only signature request — it never costs gas and doesn't touch
+      // funds, just proves the connected address controls the private key.
+      let signature: string;
+      try {
+        signature = await signMessageAsync({ message: challengePayload.message });
+      } catch (signErr) {
+        const rejected =
+          signErr instanceof Error &&
+          /rejected|denied|user rejected/i.test(signErr.message);
+        throw new Error(
+          rejected
+            ? "Signature request was rejected. Approve it in your wallet to duel."
+            : "Could not get a wallet signature. Try again.",
+        );
+      }
+
+      // 3. Submit the signed proof to actually start the duel and burn energy.
       const res = await fetch("/api/start-duel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playerAddress: address }),
+        body: JSON.stringify({ playerAddress: address, signature }),
       });
 
       const payload = await res.json();
@@ -74,6 +106,12 @@ export function useGameState() {
       if (!res.ok) {
         if (payload.error === "no_energy") {
           throw new Error("Out of energy. Wait for recharge or top up.");
+        }
+        if (payload.error === "challenge_expired") {
+          throw new Error("That signature request timed out. Tap Begin Duel to try again.");
+        }
+        if (payload.error === "bad_signature") {
+          throw new Error("Signature didn't match your wallet. Try again.");
         }
         throw new Error(payload.error ?? `HTTP ${res.status}`);
       }
@@ -93,7 +131,7 @@ export function useGameState() {
     } finally {
       setDealingDeck(false);
     }
-  }, [address]);
+  }, [address, signMessageAsync]);
 
   useEffect(() => {
     if (phase === "pick") {
@@ -102,6 +140,39 @@ export function useGameState() {
       setAiHintType(randomType);
     }
   }, [phase]);
+
+  // Reconciles local state against the server's authoritative session after
+  // an ambiguous failure — a client-side timeout doesn't mean the serverless
+  // function actually failed; it may well have completed and saved the turn
+  // after the browser gave up waiting. Returns true if it found and adopted
+  // a newer state than what the client already had.
+  const resyncFromServer = useCallback(async (): Promise<boolean> => {
+    if (!duelId || !address) return false;
+    try {
+      const res = await fetch(
+        `/api/duel-state?duelId=${encodeURIComponent(duelId)}&address=${encodeURIComponent(address)}`,
+      );
+      if (!res.ok) return false;
+      const data = await res.json();
+
+      const synced: GameState = {
+        playerHp: data.playerHp,
+        aiHp: data.aiHp,
+        turn: data.turn,
+        isOver: data.isOver,
+        playerWon: data.playerWon,
+        turns: data.turns ?? [],
+      };
+
+      setGameState(synced);
+      gameStateRef.current = synced;
+      setUsedCardIds(new Set<string>(data.usedCardIds ?? []));
+      return true;
+    } catch (err) {
+      console.error("resyncFromServer failed:", err);
+      return false;
+    }
+  }, [duelId, address]);
 
   const playTurn = useCallback(
     async (playerCard: Card, onWin?: (id: string | null) => void) => {
@@ -156,19 +227,18 @@ export function useGameState() {
         await new Promise((r) => setTimeout(r, 1200));
 
         const patch = data.state as ApiPublicState;
-        let nextSnap!: GameState;
+        const nextSnap = mergeFromApi(gameStateRef.current, patch);
 
-        setGameState((prev) => {
-          nextSnap = mergeFromApi(prev, patch);
-          if (patch.lastTurn) {
-            setLastDamageFlash({
-              player: patch.lastTurn.aiDamageDealt,
-              ai: patch.lastTurn.playerDamageDealt,
-            });
-            setTimeout(() => setLastDamageFlash(null), 1200);
-          }
-          return nextSnap;
-        });
+        setGameState(nextSnap);
+        gameStateRef.current = nextSnap;
+
+        if (patch.lastTurn) {
+          setLastDamageFlash({
+            player: patch.lastTurn.aiDamageDealt,
+            ai: patch.lastTurn.playerDamageDealt,
+          });
+          setTimeout(() => setLastDamageFlash(null), 1200);
+        }
 
         setUsedCardIds((prev) => new Set([...prev, playerCard.id]));
 
@@ -239,8 +309,34 @@ export function useGameState() {
           return;
         }
 
+        const isAbort = err instanceof DOMException && err.name === "AbortError";
+        const isAmbiguous = isAbort || errorCode === "card_already_used";
+
+        if (isAmbiguous) {
+          const synced = await resyncFromServer();
+          if (synced) {
+            setAiCard(null);
+            setAiReasoning("");
+            setSelectedCard(null);
+
+            if (gameStateRef.current.isOver) {
+              if (gameStateRef.current.playerWon) {
+                onWin?.(duelId);
+              }
+              setPhase("done");
+            } else {
+              setTurnError("Your last move had already gone through — synced up.");
+              setPhase("pick");
+              setTimeout(() => setTurnError(null), 3000);
+            }
+            return;
+          }
+          // Resync itself failed — fall through to the generic messaging below
+          // so the player at least gets a retry prompt instead of silence.
+        }
+
         const msg =
-          err instanceof DOMException && err.name === "AbortError"
+          isAbort
             ? "CIPHER took too long to respond. Tap your card again."
             : errorCode === "rate_limit_exceeded"
             ? "Too many moves — slow down and try again."
@@ -263,7 +359,7 @@ export function useGameState() {
         turnInFlight.current = false;
       }
     },
-    [usedCardIds, duelId, aiHintType],
+    [usedCardIds, duelId, aiHintType, resyncFromServer],
   );
 
   return {
