@@ -32,7 +32,7 @@ function MiniPayAutoConnect() {
     const eth = window.ethereum as { isMiniPay?: boolean } | undefined;
     if (typeof window !== "undefined" && eth?.isMiniPay) {
       const miniPayConnector = connectors.find(
-        (c) => c.id === "injected" && c.id !== "metaMask",
+        (c) => c.id === "injected",
       );
       if (miniPayConnector) {
         connect({ connector: miniPayConnector });

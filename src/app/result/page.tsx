@@ -1,15 +1,17 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { cn } from "@/lib/utils";
+import { useClaimReward } from "@/hooks/useClaimReward";
 
 function ResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { isConnected, address } = useAccount();
+  const { claimStatus, claimReward } = useClaimReward();
 
   useEffect(() => {
     if (!isConnected) {
@@ -20,7 +22,17 @@ function ResultContent() {
   const won = searchParams.get("won") === "true";
   const playerHp = Number(searchParams.get("playerHp") || 0);
   const aiHp = Number(searchParams.get("aiHp") || 0);
-  void searchParams.get("claim");
+  const duelId = searchParams.get("duelId");
+
+  // Fire the claim exactly once, from a page the player will actually stay
+  // on long enough to approve a wallet prompt — not mid-navigation.
+  const claimTriggered = useRef(false);
+  useEffect(() => {
+    if (won && duelId && !claimTriggered.current) {
+      claimTriggered.current = true;
+      claimReward(duelId);
+    }
+  }, [won, duelId, claimReward]);
 
   return (
     <main className="min-h-screen bg-duel-bg flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
@@ -73,14 +85,52 @@ function ResultContent() {
           </div>
         </div>
 
-        {/* Reward Info */}
+        {/* Reward Info — reflects REAL claim status, not a canned message */}
         {won && (
           <div className="bg-celo-green/5 border border-celo-green/20 rounded-2xl p-5 mb-10 animate-slide-up">
             <p className="text-[9px] text-celo-green font-bold tracking-[0.2em] uppercase mb-2">Loot Secured</p>
             <p className="text-3xl font-bold text-white mb-2">0.05 cUSD</p>
-            <p className="text-[10px] text-celo-green/70 leading-relaxed max-w-[200px] mx-auto">
-              Transfer initiated to your connected MiniPay wallet.
-            </p>
+
+            {!duelId && (
+              <p className="text-[10px] text-duel-gold/80 leading-relaxed max-w-[220px] mx-auto">
+                Missing duel reference — reward couldn&apos;t be claimed automatically. Contact support with this result.
+              </p>
+            )}
+
+            {duelId && claimStatus === "idle" && (
+              <p className="text-[10px] text-muted-foreground leading-relaxed max-w-[200px] mx-auto">
+                Preparing your claim…
+              </p>
+            )}
+
+            {duelId && claimStatus === "claiming" && (
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-4 h-4 border-2 border-celo-green/30 border-t-celo-green rounded-full animate-spin" />
+                <p className="text-[10px] text-celo-green/70 leading-relaxed max-w-[220px] mx-auto">
+                  Confirm the transaction in your wallet to claim your cUSD.
+                </p>
+              </div>
+            )}
+
+            {duelId && claimStatus === "claimed" && (
+              <p className="text-[10px] text-celo-green/70 leading-relaxed max-w-[200px] mx-auto">
+                Reward sent to your connected wallet.
+              </p>
+            )}
+
+            {duelId && claimStatus === "failed" && (
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-[10px] text-destructive leading-relaxed max-w-[220px] mx-auto">
+                  Claim didn&apos;t go through. Your win is still recorded — you can retry.
+                </p>
+                <button
+                  onClick={() => claimReward(duelId)}
+                  className="text-[10px] font-bold text-duel-gold hover:text-white transition-colors uppercase tracking-[0.2em] underline"
+                >
+                  Retry Claim
+                </button>
+              </div>
+            )}
           </div>
         )}
 
