@@ -83,6 +83,29 @@ const config: Config = {
           "0%": { transform: "translateY(0px)", opacity: "1" },
           "100%": { transform: "translateY(-40px)", opacity: "0" },
         },
+        "trophy-slam": {
+          "0%": { transform: "scale(0) rotate(-20deg)", opacity: "0" },
+          "70%": { transform: "scale(1.15) rotate(5deg)", opacity: "1" },
+          "100%": { transform: "scale(1) rotate(0deg)", opacity: "1" },
+        },
+        starburst: {
+          "0%": { transform: "translate(-50%, -50%) scale(0)", opacity: "0" },
+          "50%": { transform: "translate(-50%, -50%) scale(1.2)", opacity: "0.25" },
+          "100%": { transform: "translate(-50%, -50%) scale(1)", opacity: "0.1" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% center" },
+          "100%": { backgroundPosition: "200% center" },
+        },
+        "screen-flash": {
+          "0%": { opacity: "0" },
+          "20%": { opacity: "1" },
+          "100%": { opacity: "0" },
+        },
+        "letter-reveal": {
+          "0%": { transform: "translateY(20px)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
       },
       animation: {
         pulse: "pulse 1s ease-in-out infinite",
@@ -90,6 +113,10 @@ const config: Config = {
         "fade-in": "fade-in 0.3s ease-out",
         shake: "shake 0.2s ease-in-out",
         float: "float 1s ease-out forwards",
+        "trophy-slam": "trophy-slam 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        starburst: "starburst 0.7s ease-out forwards",
+        shimmer: "shimmer 3s linear infinite",
+        "screen-flash": "screen-flash 0.5s ease-out forwards",
       },
     },
 

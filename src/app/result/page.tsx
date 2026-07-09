@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { cn } from "@/lib/utils";
 import { useClaimReward } from "@/hooks/useClaimReward";
+import { VictoryCelebration } from "@/components/ui/VictoryCelebration";
 
 function ResultContent() {
   const searchParams = useSearchParams();
@@ -43,24 +44,10 @@ function ResultContent() {
       )} />
 
       <div className="z-10 text-center w-full max-w-sm animate-fade-in">
-        {/* Status Icon */}
-        <div className="relative inline-block mb-8">
-          <span className={cn(
-            "text-8xl block animate-float filter drop-shadow-2xl",
-            won ? "drop-shadow-[0_0_30px_rgba(53,212,106,0.4)]" : "drop-shadow-[0_0_30px_rgba(255,77,79,0.3)]"
-          )}>
-            {won ? "🏆" : "💀"}
-          </span>
-        </div>
+        {/* Victory Celebration / Defeated UI Component */}
+        <VictoryCelebration won={won} />
 
-        {/* Status Text */}
-        <h1 className={cn(
-          "text-5xl font-bold tracking-[0.2em] mb-3 uppercase",
-          won ? "text-celo-green" : "text-destructive"
-        )}>
-          {won ? "Victory" : "Defeated"}
-        </h1>
-        <p className="text-[10px] text-muted-foreground tracking-[0.4em] uppercase mb-12">
+        <p className="text-[10px] text-muted-foreground tracking-[0.4em] uppercase mb-12 mt-3">
           {won ? "CIPHER has been neutralized" : "CIPHER maintains control"}
         </p>
 
