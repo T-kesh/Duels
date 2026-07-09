@@ -39,7 +39,7 @@ export default function Home() {
           Duel
         </h1>
         <p className="text-[10px] text-muted-foreground tracking-[0.5em] uppercase mb-10">
-          AI Card Battle • Earn cUSD
+          AI Card Battle • Earn USDm
         </p>
 
         {/* Win Streak Badge */}
@@ -61,7 +61,7 @@ export default function Home() {
               "Deploy 1 card per turn",
               "Outlast CIPHER over 3 turns",
               "End with higher HP to win",
-              "Successful duels earn cUSD"
+              "Successful duels earn USDm"
             ].map((step, i) => (
               <li key={i} className="flex gap-4 items-start">
                 <span className="font-mono text-duel-gold/40 text-xs">0{i + 1}</span>

@@ -296,7 +296,7 @@ function PvpContent() {
       {/* ─── Create ─── */}
       <section className="glass border-white/5 p-5 rounded-xl space-y-3">
         <h2 className="text-[11px] text-duel-gold tracking-[0.3em] uppercase">Create duel</h2>
-        <label className="text-[10px] text-muted-foreground uppercase">Wager (cUSD)</label>
+        <label className="text-[10px] text-muted-foreground uppercase">Wager (USDm)</label>
         <input
           className={cn(
             "w-full px-4 py-2 rounded-xl bg-duel-bg border border-duel-gold/20 font-mono text-sm text-white",

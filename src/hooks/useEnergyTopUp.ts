@@ -16,8 +16,8 @@ export function useEnergyTopUp() {
   const weiStr = process.env.NEXT_PUBLIC_TOPUP_AMOUNT_WEI || "5000000000000000";
 
   const priceLabel = !process.env.NEXT_PUBLIC_TOPUP_AMOUNT_WEI
-    ? "~0.005 cUSD (set NEXT_PUBLIC_TOPUP_AMOUNT_WEI)"
-    : `~${Number(weiStr) / 1e18} cUSD`;
+    ? "~0.005 USDm (set NEXT_PUBLIC_TOPUP_AMOUNT_WEI)"
+    : `~${Number(weiStr) / 1e18} USDm`;
 
   const enabled = Boolean(walletClient && address && treasury && token);
 
