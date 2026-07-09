@@ -89,7 +89,7 @@ function ResultContent() {
         {won && (
           <div className="bg-celo-green/5 border border-celo-green/20 rounded-2xl p-5 mb-10 animate-slide-up">
             <p className="text-[9px] text-celo-green font-bold tracking-[0.2em] uppercase mb-2">Loot Secured</p>
-            <p className="text-3xl font-bold text-white mb-2">0.05 cUSD</p>
+            <p className="text-3xl font-bold text-white mb-2">0.05 USDm</p>
 
             {!duelId && (
               <p className="text-[10px] text-duel-gold/80 leading-relaxed max-w-[220px] mx-auto">
@@ -107,7 +107,7 @@ function ResultContent() {
               <div className="flex flex-col items-center gap-2">
                 <div className="w-4 h-4 border-2 border-celo-green/30 border-t-celo-green rounded-full animate-spin" />
                 <p className="text-[10px] text-celo-green/70 leading-relaxed max-w-[220px] mx-auto">
-                  Confirm the transaction in your wallet to claim your cUSD.
+                  Confirm the transaction in your wallet to claim your USDm.
                 </p>
               </div>
             )}
