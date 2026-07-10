@@ -120,6 +120,47 @@ code, .font-mono {
 .animate-starburst { animation: starburst 0.7s ease-out forwards; }
 .animate-screen-flash { animation: screen-flash 0.5s ease-out forwards; }
 
+@keyframes skull-drop {
+  0% { transform: scale(0.4) translateY(-60px) rotate(15deg); opacity: 0; }
+  60% { transform: scale(1.2) translateY(8px) rotate(-5deg); opacity: 1; }
+  80% { transform: scale(0.92) translateY(-4px) rotate(2deg); opacity: 1; }
+  100% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; }
+}
+
+@keyframes skull-pulse {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(239,68,68,0.4)) drop-shadow(0 0 30px rgba(239,68,68,0.15)); }
+  50% { filter: drop-shadow(0 0 24px rgba(239,68,68,0.7)) drop-shadow(0 0 50px rgba(239,68,68,0.3)); }
+}
+
+@keyframes defeat-screen-flash {
+  0% { opacity: 0; }
+  15% { opacity: 0.55; }
+  40% { opacity: 0.2; }
+  70% { opacity: 0.08; }
+  100% { opacity: 0; }
+}
+
+@keyframes crack-reveal {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 0.18; transform: scale(1.05); }
+  100% { opacity: 0.12; transform: scale(1); }
+}
+
+@keyframes defeat-letter-reveal {
+  0% { transform: translateY(-24px) scaleY(1.4); opacity: 0; filter: blur(4px); }
+  100% { transform: translateY(0) scaleY(1); opacity: 1; filter: blur(0); }
+}
+
+@keyframes ember-flicker {
+  0%, 100% { opacity: 0.7; transform: translateY(0) scale(1); }
+  50% { opacity: 1; transform: translateY(-3px) scale(1.15); }
+}
+
+.animate-skull-drop { animation: skull-drop 0.75s cubic-bezier(0.34, 1.2, 0.64, 1) forwards; }
+.animate-skull-pulse { animation: skull-pulse 2.4s ease-in-out infinite; }
+.animate-defeat-flash { animation: defeat-screen-flash 0.8s ease-out forwards; }
+.animate-crack-reveal { animation: crack-reveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;

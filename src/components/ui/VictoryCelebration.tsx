@@ -22,6 +22,7 @@ interface Particle {
 
 export function VictoryCelebration({ won }: VictoryCelebrationProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const defeatCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [animationStarted, setAnimationStarted] = useState(false);
 
@@ -38,7 +39,7 @@ export function VictoryCelebration({ won }: VictoryCelebrationProps) {
     return () => mediaQuery.removeEventListener("change", listener);
   }, []);
 
-  // Particle System Effect
+  // Victory Particle System Effect
   useEffect(() => {
     if (!won || prefersReducedMotion || !animationStarted || !canvasRef.current) return;
 
@@ -65,7 +66,7 @@ export function VictoryCelebration({ won }: VictoryCelebrationProps) {
         x,
         y,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - (isSecondary ? 2 : 5), // dynamic upward initial velocity bias
+        vy: Math.sin(angle) * speed - (isSecondary ? 2 : 5),
         color: colors[Math.floor(Math.random() * colors.length)],
         size: Math.random() * 6 + 4,
         alpha: 1,
@@ -81,10 +82,8 @@ export function VictoryCelebration({ won }: VictoryCelebrationProps) {
       }
     };
 
-    // Initial burst from center top / viewport middle
     spawnBurst(canvas.width / 2, canvas.height * 0.35, 120);
 
-    // Delayed secondary burst
     const timer = setTimeout(() => {
       spawnBurst(canvas.width / 2, canvas.height * 0.35, 60, true);
     }, 600);
@@ -95,8 +94,8 @@ export function VictoryCelebration({ won }: VictoryCelebrationProps) {
       particles.forEach((p, idx) => {
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.18; // gravity
-        p.vx *= 0.98; // air resistance
+        p.vy += 0.18;
+        p.vx *= 0.98;
         p.alpha -= p.decay;
         p.rotation += p.rotationSpeed;
 
@@ -110,8 +109,6 @@ export function VictoryCelebration({ won }: VictoryCelebrationProps) {
         ctx.translate(p.x, p.y);
         ctx.rotate((p.rotation * Math.PI) / 180);
         ctx.fillStyle = p.color;
-        
-        // Draw square/confetti ribbons
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
         ctx.restore();
       });
@@ -130,21 +127,182 @@ export function VictoryCelebration({ won }: VictoryCelebrationProps) {
     };
   }, [won, prefersReducedMotion, animationStarted]);
 
+  // Defeat Ember / Ash Particle System
+  useEffect(() => {
+    if (won || prefersReducedMotion || !animationStarted || !defeatCanvasRef.current) return;
+
+    const canvas = defeatCanvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animationFrameId: number;
+    const particles: Particle[] = [];
+
+    // Dark ember / ash palette
+    const colors = ["#ef4444", "#b91c1c", "#6b7280", "#374151", "#ff6b6b", "#dc2626"];
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    // Embers drift across the screen from random top positions
+    const createEmber = (): Particle => {
+      return {
+        x: Math.random() * canvas.width,
+        y: -10,
+        vx: (Math.random() - 0.5) * 1.8,
+        vy: Math.random() * 1.5 + 0.6,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 4 + 1.5,
+        alpha: Math.random() * 0.6 + 0.3,
+        decay: Math.random() * 0.004 + 0.002,
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 2,
+      };
+    };
+
+    // Seed initial embers
+    for (let i = 0; i < 60; i++) {
+      const p = createEmber();
+      p.y = Math.random() * canvas.height; // scatter vertically at start
+      particles.push(p);
+    }
+
+    let spawnAccumulator = 0;
+    const SPAWN_RATE = 0.8; // new embers per frame
+
+    const updateAndDraw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Spawn new embers
+      spawnAccumulator += SPAWN_RATE;
+      while (spawnAccumulator >= 1) {
+        particles.push(createEmber());
+        spawnAccumulator -= 1;
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx += (Math.random() - 0.5) * 0.1; // slight drift
+        p.alpha -= p.decay;
+        p.rotation += p.rotationSpeed;
+
+        if (p.alpha <= 0 || p.y > canvas.height + 10) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        // Draw small ember diamond
+        ctx.beginPath();
+        ctx.moveTo(0, -p.size);
+        ctx.lineTo(p.size * 0.5, 0);
+        ctx.lineTo(0, p.size);
+        ctx.lineTo(-p.size * 0.5, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      animationFrameId = requestAnimationFrame(updateAndDraw);
+    };
+
+    updateAndDraw();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener("resize", resizeCanvas);
+    };
+  }, [won, prefersReducedMotion, animationStarted]);
+
   const victoryText = "VICTORY";
+  const defeatText = "DEFEATED";
 
   if (!won) {
     return (
-      <div className="z-10 text-center w-full max-w-sm">
-        {/* Defeated minimal layout */}
-        <div className="relative inline-block mb-8">
-          <span className="text-8xl block filter drop-shadow-2xl drop-shadow-[0_0_30px_rgba(255,77,79,0.3)] select-none">
-            💀
-          </span>
+      <>
+        {/* Defeat Ember Canvas */}
+        {!prefersReducedMotion && (
+          <canvas
+            ref={defeatCanvasRef}
+            className="fixed inset-0 pointer-events-none z-0"
+            style={{ mixBlendMode: "screen" }}
+          />
+        )}
+
+        {/* Red screen flash */}
+        {!prefersReducedMotion && (
+          <div className="fixed inset-0 bg-red-600/60 pointer-events-none z-50 animate-defeat-flash" />
+        )}
+
+        <div className="relative z-10 text-center w-full max-w-sm select-none flex flex-col items-center">
+          {/* Cracked ring halo */}
+          {!prefersReducedMotion && (
+            <div className="absolute top-12 left-1/2 w-52 h-52 pointer-events-none -z-10">
+              <svg
+                className="absolute top-1/2 left-1/2 w-full h-full -translate-x-1/2 -translate-y-1/2 animate-crack-reveal text-red-600/30"
+                viewBox="0 0 100 100"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Jagged crack ring */}
+                <circle cx="50" cy="50" r="45" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 4" />
+                <path
+                  d="M50 5 L54 22 L68 12 L55 32 L75 28 L58 44 L80 50 L58 56 L75 72 L55 68 L68 88 L54 78 L50 95 L46 78 L32 88 L45 68 L25 72 L42 56 L20 50 L42 44 L25 28 L45 32 L32 12 L46 22 Z"
+                  stroke="currentColor"
+                  strokeWidth="0.8"
+                  fill="currentColor"
+                  opacity="0.15"
+                />
+                <circle cx="50" cy="50" r="38" stroke="rgba(239,68,68,0.2)" strokeWidth="0.3" strokeDasharray="1 6" />
+              </svg>
+            </div>
+          )}
+
+          {/* Skull icon */}
+          <div className="relative inline-block mb-8 z-10">
+            <span
+              className={cn(
+                "text-8xl block",
+                !prefersReducedMotion
+                  ? "animate-skull-drop animate-skull-pulse"
+                  : ""
+              )}
+            >
+              💀
+            </span>
+          </div>
+
+          {/* Defeated text — staggered letter reveal */}
+          <h1 className="text-5xl font-bold tracking-[0.2em] mb-3 uppercase relative overflow-hidden flex justify-center">
+            {prefersReducedMotion ? (
+              <span className="text-destructive">{defeatText}</span>
+            ) : (
+              defeatText.split("").map((char, index) => (
+                <span
+                  key={index}
+                  className="inline-block text-transparent bg-clip-text bg-gradient-to-b from-red-400 via-red-600 to-red-900"
+                  style={{
+                    animation: `defeat-letter-reveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) ${index * 0.06}s both`,
+                    opacity: 0,
+                  }}
+                >
+                  {char}
+                </span>
+              ))
+            )}
+          </h1>
         </div>
-        <h1 className="text-5xl font-bold tracking-[0.2em] mb-3 uppercase text-destructive">
-          Defeated
-        </h1>
-      </div>
+      </>
     );
   }
 
