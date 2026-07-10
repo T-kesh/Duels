@@ -161,6 +161,17 @@ code, .font-mono {
 .animate-defeat-flash { animation: defeat-screen-flash 0.8s ease-out forwards; }
 .animate-crack-reveal { animation: crack-reveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite linear;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
