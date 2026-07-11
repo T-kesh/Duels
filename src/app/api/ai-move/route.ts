@@ -80,6 +80,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "duel_already_complete" }, { status: 400 });
     }
 
+    // Get player's current wins to scale difficulty and draw AI cards from correct tier pool
+    const playerWins = await getTotalWins(session.playerAddress);
+    
+    // Build AI's available tiered card pool
+    const { getTieredPool } = await import("@/constants/cards");
+    const aiPool = getTieredPool(playerWins);
+
     const prompt = buildCipherPrompt({
       playerCard: authoritativeCard,
       aiHp: gameState.aiHp,
@@ -89,11 +96,32 @@ export async function POST(req: NextRequest) {
       // Streak is client-supplied (cosmetic narrative only; no game outcome impact).
       streak: Number(history.streak ?? 0),
       // Use server-verified win count so the client cannot inflate CIPHER's difficulty.
-      totalWins: await getTotalWins(session.playerAddress),
+      totalWins: playerWins,
       recentDuels,
     });
 
-    const { card, reasoning } = await fetchCipherPick(prompt);
+    const { card: rawCard, reasoning } = await fetchCipherPick(prompt);
+
+    // Enforce that AI card is selected from its tiered pool. Fallback if LLM output fails
+    let card = aiPool.find((c) => c.id === rawCard.id) || aiPool[0];
+
+    // Decouple LLM move from the hint: 70% probability to honor the hint.
+    // If we roll to NOT honor the hint and the LLM picked a card matching the hint category,
+    // we swap it to a different category.
+    const shouldHonorHint = Math.random() < 0.70;
+    if (!shouldHonorHint && card.type === aiHintType) {
+      // Find cards of other types in the AI pool
+      const nonHintCards = aiPool.filter((c) => c.type !== aiHintType);
+      if (nonHintCards.length > 0) {
+        card = nonHintCards[Math.floor(Math.random() * nonHintCards.length)];
+      }
+    } else if (shouldHonorHint && card.type !== aiHintType) {
+      // If we roll to honor the hint but LLM picked something else, force-swap to matching type
+      const matchingCards = aiPool.filter((c) => c.type === aiHintType);
+      if (matchingCards.length > 0) {
+        card = matchingCards[Math.floor(Math.random() * matchingCards.length)];
+      }
+    }
 
     const nextState = resolveTurn(gameState, authoritativeCard, card, aiHintType);
 
