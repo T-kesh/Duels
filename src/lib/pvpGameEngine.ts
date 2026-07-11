@@ -1,22 +1,17 @@
 import { Card, STARTING_HP } from "@/constants/cards";
-import { calcDamageDealt, CLUTCH_DAMAGE_MULTIPLIER } from "@/lib/gameEngine";
+import { calcDamageDealtUnified } from "@/lib/combat";
 
 /**
- * Symmetric two-player duel resolution. Unlike the vs-AI engine, neither side
- * gets a hint shield, and ties are NOT silently awarded to one side — the
- * approved rule is: higher HP wins, then higher cumulative damage, then
- * sudden-death rounds, with the challenger (player2) as the final fallback.
- *
- * Pure and deterministic: the route layer draws cards (crypto RNG) and feeds
- * them in; this module only computes outcomes so it can be unit-tested and
- * replayed for claim verification.
+ * Symmetric two-player duel resolution. Neither side
+ * gets a hint shield, and ties are resolved via split pot in rewards payout.
+ * Pure and deterministic calculation.
  */
 
 export type PvpSlot = "p1" | "p2";
 
 /** Standard duel length before any sudden-death extension. */
 export const PVP_BASE_ROUNDS = 3;
-/** Safety cap on sudden-death rounds before falling back to the challenger. */
+/** Safety cap on sudden-death rounds before falling back to a tie. */
 export const PVP_MAX_SUDDEN_DEATH = 5;
 
 export interface PvpRoundInput {
@@ -42,7 +37,7 @@ export interface PvpState {
   round: number;
   rounds: PvpResolvedRound[];
   isOver: boolean;
-  winnerSlot: PvpSlot | null;
+  winnerSlot: PvpSlot | null; // null represents a draw/tie
 }
 
 export function initPvpState(): PvpState {
@@ -73,15 +68,17 @@ export function applyPvpRound(state: PvpState, p1Card: Card, p2Card: Card): PvpS
   const round = state.round;
   const clutch = isClutchRound(round);
 
-  let p1DamageDealt = calcDamageDealt(p1Card.damage, p2Card.shield);
-  let p2DamageDealt = calcDamageDealt(p2Card.damage, p1Card.shield);
-  if (clutch) {
-    p1DamageDealt = Math.floor(p1DamageDealt * CLUTCH_DAMAGE_MULTIPLIER);
-    p2DamageDealt = Math.floor(p2DamageDealt * CLUTCH_DAMAGE_MULTIPLIER);
-  }
+  const p1DamageDealt = calcDamageDealtUnified(p1Card.damage, p2Card.shield, 0, clutch);
+  const p2DamageDealt = calcDamageDealtUnified(p2Card.damage, p1Card.shield, 0, clutch);
 
-  const p1Hp = Math.max(0, state.p1Hp - p2DamageDealt);
-  const p2Hp = Math.max(0, state.p2Hp - p1DamageDealt);
+  // Lifesteal calculation (50% of damage actually dealt)
+  const p1Heal = p1Card.id.startsWith("drain") ? Math.floor(p1DamageDealt * 0.5) : 0;
+  const p2Heal = p2Card.id.startsWith("drain") ? Math.floor(p2DamageDealt * 0.5) : 0;
+
+  // Apply damage and healing (capped at starting HP)
+  const p1Hp = Math.min(STARTING_HP, Math.max(0, state.p1Hp - p2DamageDealt + p1Heal));
+  const p2Hp = Math.min(STARTING_HP, Math.max(0, state.p2Hp - p1DamageDealt + p2Heal));
+
   const p1DamageTotal = state.p1DamageTotal + p1DamageDealt;
   const p2DamageTotal = state.p2DamageTotal + p2DamageDealt;
 
@@ -92,10 +89,11 @@ export function applyPvpRound(state: PvpState, p1Card: Card, p2Card: Card): PvpS
   let winnerSlot: PvpSlot | null = null;
 
   if (p1Dead && p2Dead) {
-    // Double KO — cannot continue to sudden death with no HP. Decide by total
-    // damage; an exact tie falls to the challenger (p2).
+    // Double KO — cannot continue. Equal damage results in a draw (winnerSlot = null).
     isOver = true;
-    winnerSlot = p1DamageTotal > p2DamageTotal ? "p1" : "p2";
+    if (p1DamageTotal !== p2DamageTotal) {
+      winnerSlot = p1DamageTotal > p2DamageTotal ? "p1" : "p2";
+    }
   } else if (p1Dead || p2Dead) {
     isOver = true;
     winnerSlot = p1Dead ? "p2" : "p1";
@@ -107,11 +105,10 @@ export function applyPvpRound(state: PvpState, p1Card: Card, p2Card: Card): PvpS
       isOver = true;
       winnerSlot = p1DamageTotal > p2DamageTotal ? "p1" : "p2";
     } else if (round >= PVP_BASE_ROUNDS + PVP_MAX_SUDDEN_DEATH) {
-      // Exhausted sudden-death cap with a perfect tie — challenger wins.
+      // Sudden-death cap reached with perfect tie — draw game.
       isOver = true;
-      winnerSlot = "p2";
+      winnerSlot = null; // Draw/Split the pot
     }
-    // else: dead even — fall through to another (sudden-death) round.
   }
 
   const resolved: PvpResolvedRound = {

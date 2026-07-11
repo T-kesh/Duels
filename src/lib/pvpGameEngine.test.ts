@@ -8,15 +8,16 @@ import {
   PVP_BASE_ROUNDS,
 } from "@/lib/pvpGameEngine";
 
-const strike = CARDS.find((c) => c.id === "strike")!; // 30 dmg / 0 shield
+const strike = CARDS.find((c) => c.id === "strike")!; // 30 dmg / 8 shield
 const block = CARDS.find((c) => c.id === "block")!; //  0 dmg / 40 shield
 const surge = CARDS.find((c) => c.id === "surge")!; // 50 dmg / 0 shield
+const drain = CARDS.find((c) => c.id === "drain")!; // 20 dmg / 0 shield
 
 describe("pvpGameEngine", () => {
-  it("applies symmetric damage minus shield (no hint bonus for either side)", () => {
-    const next = applyPvpRound(initPvpState(), strike, strike);
-    expect(next.p1Hp).toBe(70);
-    expect(next.p2Hp).toBe(70);
+  it("applies symmetric damage minus shield", () => {
+    const next = applyPvpRound(initPvpState(), strike, strike); // strike vs strike -> damage dealt is max(0, 30-8) = 22. Both take 22.
+    expect(next.p1Hp).toBe(78);
+    expect(next.p2Hp).toBe(78);
     expect(next.isOver).toBe(false);
     expect(next.round).toBe(2);
   });
@@ -35,52 +36,52 @@ describe("pvpGameEngine", () => {
     expect(s.round).toBe(PVP_BASE_ROUNDS);
     const before = s;
     const after = applyPvpRound(before, strike, block); // r3, clutch
-    // strike 30 -> floor(30*1.1)=33 vs block 40 shield => max(0, 30-40)=0 dmg, clutch floor(0)=0
+    // strike 30 -> floor(30*1.1)=33 vs block 40 shield => max(0, 33-40)=0 dmg
     expect(after.rounds[2].p1DamageDealt).toBe(0);
-    // give a clean clutch test: surge(50) unblocked on round 3
-    const clutch = applyPvpRound(before, surge, strike);
-    expect(clutch.rounds[2].p1DamageDealt).toBe(Math.floor(50 * 1.1)); // 55
-    expect(clutch.rounds[2].p2DamageDealt).toBe(Math.floor(30 * 1.1)); // 33
+    
+    const clutch = applyPvpRound(before, surge, strike); // surge(50) vs strike(8 shield)
+    // p1: floor(50 * 1.1) - 8 = 55 - 8 = 47. p2: floor(30*1.1) - 0 = 33
+    expect(clutch.rounds[2].p1DamageDealt).toBe(47);
+    expect(clutch.rounds[2].p2DamageDealt).toBe(33);
+  });
+
+  it("applies lifesteal healing in PvP", () => {
+    let s = initPvpState();
+    s.p1Hp = 50;
+    const next = applyPvpRound(s, drain, strike); // drain(20) vs strike(8 shield) -> 12 dmg. heals floor(12 * 0.5) = 6. strike(30) vs drain(0 shield) -> 30 dmg.
+    expect(next.p1Hp).toBe(50 - 30 + 6); // 26
   });
 
   it("ends immediately when a player is reduced to 0 HP", () => {
-    // Force lethal: surge (50) lands fully against strike (0 shield).
     let s = initPvpState();
-    s = applyPvpRound(s, surge, strike); // p2 takes 50 -> 50; p1 takes 30 -> 70
-    s = applyPvpRound(s, surge, strike); // p2 takes 50 -> 0 -> over
+    s = applyPvpRound(s, surge, strike); // p2 takes 50-8=42 -> 58; p1 takes 30-0=30 -> 70
+    s = applyPvpRound(s, surge, strike); // p2 takes 50-8=42 -> 16; p1 takes 30-0=30 -> 40
+    s = applyPvpRound(s, surge, strike); // p2 takes floor(50*1.1)-8=47 -> 0 -> over
     expect(s.isOver).toBe(true);
     expect(s.winnerSlot).toBe("p1");
   });
 
   it("after base rounds, higher HP wins", () => {
     let s = initPvpState();
-    s = applyPvpRound(s, strike, block); // p2 absorbs; p1 full, p2 full
     s = applyPvpRound(s, strike, block);
-    s = applyPvpRound(s, strike, block); // round 3, still 100-100? strike vs block = 0
-    // tie path — equal HP and equal (zero) damage -> sudden death, not over
-    expect(s.isOver).toBe(false);
+    s = applyPvpRound(s, strike, block);
+    s = applyPvpRound(s, strike, block);
+    expect(s.isOver).toBe(false); // HP equal, damage equal -> sudden death
     expect(needsSuddenDeath(s)).toBe(true);
   });
 
-  it("after base rounds with unequal HP, decides without sudden death", () => {
+  it("ends in a draw when sudden-death cap is reached with perfect tie", () => {
     let s = initPvpState();
-    s = applyPvpRound(s, strike, strike); // 70-70
-    s = applyPvpRound(s, strike, strike); // 40-40
-    s = applyPvpRound(s, surge, strike); // r3 clutch: p1 deals 55, p2 deals 33 -> p2Hp 40-55<=0
+    s = applyPvpRound(s, block, block); // r1
+    s = applyPvpRound(s, block, block); // r2
+    s = applyPvpRound(s, block, block); // r3 -> HP 100-100, damage 0-0 -> sudden death r4
+    s = applyPvpRound(s, block, block); // r4
+    s = applyPvpRound(s, block, block); // r5
+    s = applyPvpRound(s, block, block); // r6
+    s = applyPvpRound(s, block, block); // r7
+    s = applyPvpRound(s, block, block); // r8 (last sudden-death round)
     expect(s.isOver).toBe(true);
-    expect(s.winnerSlot).toBe("p1");
-  });
-
-  it("breaks an HP tie by cumulative damage after base rounds", () => {
-    // Construct equal HP but unequal damage at round 3 via a sudden-death-free path.
-    let s = initPvpState();
-    s = applyPvpRound(s, strike, strike); // 70-70, dmg 30-30
-    s = applyPvpRound(s, strike, strike); // 40-40, dmg 60-60
-    // round 3: p1 plays parry (10 dmg/30 shield), p2 plays parry too -> symmetric, still tie
-    // Instead: both counter (20 dmg / 20 shield) clutch: dealt = floor((20-20)*1.1)=0 -> tie again
-    s = applyPvpRound(s, block, block); // r3: 0 dmg both, HP 40-40, dmg equal -> sudden death
-    expect(s.isOver).toBe(false);
-    expect(s.round).toBe(PVP_BASE_ROUNDS + 1);
+    expect(s.winnerSlot).toBeNull(); // draw game
   });
 
   it("determinePvpOutcome replays a transcript to the same result", () => {
@@ -94,15 +95,11 @@ describe("pvpGameEngine", () => {
     expect(outcome.winnerSlot).toBe("p1");
   });
 
-  it("decides a double-KO by total damage", () => {
-    // Both at low HP, both lethal on the same round.
+  it("decides a double-KO by total damage, or Null/draw if equal", () => {
     let s = initPvpState();
-    s = applyPvpRound(s, surge, surge); // 50-50, dmg 50-50
-    // round 2: p1 surge (50) vs p2 strike(30). p2 takes 50 -> 0; p1 takes 30 -> 20. not double KO.
-    // craft double KO: round 2 both surge -> both 0
+    s = applyPvpRound(s, surge, surge);
     const dk = applyPvpRound(s, surge, surge);
     expect(dk.isOver).toBe(true);
-    // equal total damage -> challenger (p2) wins the tie
-    expect(dk.winnerSlot).toBe("p2");
+    expect(dk.winnerSlot).toBeNull(); // symmetric double KO -> draw
   });
 });

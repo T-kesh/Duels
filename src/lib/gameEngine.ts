@@ -1,4 +1,5 @@
 import { Card, STARTING_HP } from "@/constants/cards";
+import { calcDamageDealtUnified } from "@/lib/combat";
 
 export type AiHintType = "attack" | "defend" | "special";
 
@@ -21,7 +22,6 @@ export interface GameState {
 }
 
 export const HINT_SHIELD_BONUS = 5;
-export const CLUTCH_DAMAGE_MULTIPLIER = 1.1;
 
 export function initGameState(): GameState {
   return {
@@ -34,18 +34,9 @@ export function initGameState(): GameState {
   };
 }
 
-/** Damage dealt by attacker against defender shield (+ optional AI hint bonus shield). */
-export function calcDamageDealt(
-  attackerDamage: number,
-  defenderShield: number,
-  extraDefenderShield = 0,
-): number {
-  return Math.max(0, attackerDamage - defenderShield - extraDefenderShield);
-}
-
 /** Preview damage this card deals against a defender shield value. */
 export function previewDamage(attacker: Card, defenderShield: number, extraDefenderShield = 0): number {
-  return calcDamageDealt(attacker.damage, defenderShield, extraDefenderShield);
+  return Math.max(0, attacker.damage - defenderShield - extraDefenderShield);
 }
 
 export function resolveTurn(
@@ -57,18 +48,29 @@ export function resolveTurn(
   const { playerHp, aiHp } = state;
   const isClutchTurn = state.turn === 3;
   const hintHonored = Boolean(aiHintType && aiCard.type === aiHintType);
-  const aiBonusShield = hintHonored ? HINT_SHIELD_BONUS : 0;
-
-  let playerDamageDealt = calcDamageDealt(playerCard.damage, aiCard.shield, aiBonusShield);
-  let aiDamageDealt = calcDamageDealt(aiCard.damage, playerCard.shield);
-
-  if (isClutchTurn) {
-    playerDamageDealt = Math.floor(playerDamageDealt * CLUTCH_DAMAGE_MULTIPLIER);
-    aiDamageDealt = Math.floor(aiDamageDealt * CLUTCH_DAMAGE_MULTIPLIER);
+  
+  // Scale AI hint shield bonus dynamically if AI is using tiered cards
+  let aiBonusShield = 0;
+  if (hintHonored) {
+    if (aiCard.tier === 3) {
+      aiBonusShield = 8;
+    } else if (aiCard.tier === 2) {
+      aiBonusShield = 6;
+    } else {
+      aiBonusShield = HINT_SHIELD_BONUS; // 5
+    }
   }
 
-  const newPlayerHp = Math.max(0, playerHp - aiDamageDealt);
-  const newAiHp = Math.max(0, aiHp - playerDamageDealt);
+  const playerDamageDealt = calcDamageDealtUnified(playerCard.damage, aiCard.shield, aiBonusShield, isClutchTurn);
+  const aiDamageDealt = calcDamageDealtUnified(aiCard.damage, playerCard.shield, 0, isClutchTurn);
+
+  // Lifesteal calculation (50% of damage actually dealt)
+  const playerHeal = playerCard.id.startsWith("drain") ? Math.floor(playerDamageDealt * 0.5) : 0;
+  const aiHeal = aiCard.id.startsWith("drain") ? Math.floor(aiDamageDealt * 0.5) : 0;
+
+  // Apply damage and healing (capped at starting HP)
+  const newPlayerHp = Math.min(STARTING_HP, Math.max(0, playerHp - aiDamageDealt + playerHeal));
+  const newAiHp = Math.min(STARTING_HP, Math.max(0, aiHp - playerDamageDealt + aiHeal));
 
   const newTurn = state.turn + 1;
   const isOver = newTurn > 3 || newPlayerHp <= 0 || newAiHp <= 0;
@@ -77,7 +79,7 @@ export function resolveTurn(
   if (isOver) {
     if (newPlayerHp > newAiHp) playerWon = true;
     else if (newAiHp > newPlayerHp) playerWon = false;
-    else playerWon = true;
+    else playerWon = true; // Tie-break favors player in AI mode
   }
 
   const turnResult: TurnResult = {

@@ -18,7 +18,7 @@ export const CARDS: Card[] = [
     type: "attack",
     tier: 1,
     damage: 30,
-    shield: 0,
+    shield: 8,
     description: "A direct hit. Clean and simple.",
     emoji: "⚔️",
   },
@@ -61,6 +61,16 @@ export const CARDS: Card[] = [
     shield: 30,
     description: "Deflect and riposte.",
     emoji: "🗡️",
+  },
+  {
+    id: "drain",
+    name: "Drain",
+    type: "special",
+    tier: 1,
+    damage: 20,
+    shield: 0,
+    description: "Siphon life force. Lifesteals 50% of damage dealt.",
+    emoji: "🩸",
   },
 ];
 
