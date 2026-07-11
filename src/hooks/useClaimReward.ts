@@ -1,44 +1,35 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { useAccount, useWalletClient } from "wagmi";
+import { useAccount, useWriteContract, useSwitchChain } from "wagmi";
+import { celo } from "wagmi/chains";
 import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
 
 export function useClaimReward() {
-  const { address, connector, status: accountStatus, chainId } = useAccount();
-  const addressRef = useRef(address);
-  addressRef.current = address;
-
-  const {
-    data: walletClient,
-    error: walletClientError,
-    status: walletClientStatus,
-  } = useWalletClient();
-  const walletClientRef = useRef(walletClient);
-  walletClientRef.current = walletClient;
-  const walletClientErrorRef = useRef(walletClientError);
-  walletClientErrorRef.current = walletClientError;
-  const walletClientStatusRef = useRef(walletClientStatus);
-  walletClientStatusRef.current = walletClientStatus;
+  const { address, status: accountStatus, chainId } = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const { switchChainAsync } = useSwitchChain();
 
   const [claimStatus, setClaimStatus] = useState<"idle" | "claiming" | "claimed" | "failed">(
     "idle",
   );
+  const [claimError, setClaimError] = useState<string | null>(null);
+
+  const addressRef = useRef(address);
+  addressRef.current = address;
 
   const claimReward = useCallback(async (duelId: string | null) => {
     if (!duelId) {
       console.error("claimReward: missing duelId, cannot claim");
       setClaimStatus("failed");
+      setClaimError("Missing duelId reference.");
       return;
     }
 
-    // Set this immediately, before any waiting — a silent "idle" with no
-    // path forward is what caused this bug in the first place.
     setClaimStatus("claiming");
+    setClaimError(null);
 
-    // Both `address` and `walletClient` can be briefly undefined right after
-    // navigating to this page while wagmi rehydrates the connector. Give
-    // both a short grace window instead of bailing out with no feedback.
+    // Give address a short grace window instead of bailing out with no feedback
     let addr = addressRef.current;
     for (let attempt = 0; attempt < 10 && !addr; attempt++) {
       await new Promise((r) => setTimeout(r, 300));
@@ -47,32 +38,20 @@ export function useClaimReward() {
     if (!addr) {
       console.error("claimReward: wallet address never became available");
       setClaimStatus("failed");
-      return;
-    }
-
-    let client = walletClientRef.current;
-    for (let attempt = 0; attempt < 10 && !client; attempt++) {
-      await new Promise((r) => setTimeout(r, 300));
-      client = walletClientRef.current;
-    }
-    if (!client) {
-      // Full diagnostic snapshot — "error: null" alone doesn't tell us why;
-      // whether wagmi even thinks a wallet is connected, which connector,
-      // and what chain it's tracking does.
-      console.error("claimReward: wallet client never became available.", {
-        accountStatus,
-        connectorName: connector?.name,
-        connectorId: connector?.id,
-        chainId,
-        address: addressRef.current,
-        walletClientStatus: walletClientStatusRef.current,
-        walletClientError: walletClientErrorRef.current,
-      });
-      setClaimStatus("failed");
+      setClaimError("Wallet address is not available.");
       return;
     }
 
     try {
+      // Chain ID Mismatch Guard
+      if (chainId !== celo.id) {
+        try {
+          await switchChainAsync({ chainId: celo.id });
+        } catch (switchErr: any) {
+          throw new Error(`Please switch to Celo network: ${switchErr?.message || switchErr}`);
+        }
+      }
+
       const res = await fetch("/api/claim-rewards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -84,15 +63,12 @@ export function useClaimReward() {
 
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}));
-        throw new Error(payload.error ?? "Failed to get reward signature");
+        throw new Error(payload.error ?? "Failed to get reward signature from server.");
       }
 
       const { nonce, signature } = await res.json();
 
-      const { writeContract } = await import("wagmi/actions");
-      const { config } = await import("@/lib/wagmi");
-
-      await writeContract(config, {
+      await writeContractAsync({
         address: DUEL_REWARDS_ADDRESS as `0x${string}`,
         abi: DUEL_REWARDS_ABI,
         functionName: "claimReward",
@@ -100,15 +76,31 @@ export function useClaimReward() {
       });
 
       setClaimStatus("claimed");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Claim failed:", err);
       setClaimStatus("failed");
+
+      // Extract detailed failure reasons
+      let message = err?.message || String(err);
+      if (err?.cause?.message) {
+        message = err.cause.message;
+      }
+
+      if (message.includes("User rejected the request")) {
+        message = "Transaction rejected by user.";
+      } else if (message.includes("PoolEmpty") || message.includes("0xe5ea1016")) {
+        message = "Contract reward pool is empty. Please contact support.";
+      } else if (message.includes("DailyLimitReached") || message.includes("0xc4506c04")) {
+        message = "Daily claim limit reached.";
+      }
+
+      setClaimError(message);
     }
-  }, [connector, accountStatus, chainId]);
+  }, [chainId, writeContractAsync, switchChainAsync]);
 
   return {
     claimStatus,
+    claimError,
     claimReward,
   };
 }
-

@@ -12,7 +12,7 @@ function ResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { isConnected, address } = useAccount();
-  const { claimStatus, claimReward } = useClaimReward();
+  const { claimStatus, claimError, claimReward } = useClaimReward();
 
   useEffect(() => {
     if (!isConnected) {
@@ -110,6 +110,11 @@ function ResultContent() {
                 <p className="text-[10px] text-destructive leading-relaxed max-w-[220px] mx-auto">
                   Claim didn&apos;t go through. Your win is still recorded — you can retry.
                 </p>
+                {claimError && (
+                  <p className="text-[9px] text-destructive/70 leading-relaxed max-w-[220px] mx-auto font-mono break-words">
+                    {claimError}
+                  </p>
+                )}
                 <button
                   onClick={() => claimReward(duelId)}
                   className="text-[10px] font-bold text-duel-gold hover:text-white transition-colors uppercase tracking-[0.2em] underline"
