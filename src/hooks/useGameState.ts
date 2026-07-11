@@ -135,6 +135,9 @@ export function useGameState() {
 
   useEffect(() => {
     if (phase === "pick") {
+      // The AI's actual move selection is done server-side dynamically.
+      // To show a probabilistic hint to the player, we pick a category.
+      // The server will later decide whether to honor this hint or play something else.
       const types = ["attack", "defend", "special"];
       const randomType = types[Math.floor(Math.random() * types.length)] as string;
       setAiHintType(randomType);
