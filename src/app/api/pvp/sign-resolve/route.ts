@@ -49,10 +49,10 @@ export async function POST(req: NextRequest) {
 
     // Defense in depth: replay the transcript. A forfeit win has no transcript
     // outcome, so trust the stored winnerSlot only when the duel ended in play.
-    let winnerSlot: PvpSlot = session.winnerSlot;
+    let winnerSlot: PvpSlot | null = session.winnerSlot;
     if (session.transcript.length > 0) {
       const replay = determinePvpOutcome(session.transcript);
-      if (replay.isOver && replay.winnerSlot) {
+      if (replay.isOver) {
         winnerSlot = replay.winnerSlot;
       }
     }
@@ -65,7 +65,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "duel_not_joined_yet" }, { status: 400 });
     }
 
-    const winner = winnerAddressFor(winnerSlot, duel);
+    // If winnerSlot is null, it indicates a Draw/Tie. Map to zeroAddress.
+    const winner = winnerSlot === null ? zeroAddress : winnerAddressFor(winnerSlot, duel);
     const winnerAddress = getAddress(winner as Hex);
 
     const privateKey = process.env.PRIVATE_KEY;

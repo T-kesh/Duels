@@ -100,10 +100,36 @@ contract DuelRewards {
         emit DuelJoined(duelId, msg.sender);
     }
 
+    event DuelTied(uint256 indexed duelId, uint256 refund);
+
     function resolveDuel(uint256 duelId, address winner, bytes32 nonce, bytes memory signature) external {
         if (usedNonces[nonce]) revert AlreadyClaimed();
         Duel storage duel = duels[duelId];
         if (!duel.isActive) revert DuelNotActive();
+
+        // Handle a draw game (winner = address(0))
+        if (winner == address(0)) {
+            // Signature checks verifying that the server authenticated a tie game
+            bytes32 message = keccak256(abi.encodePacked(duelId, winner, nonce));
+            bytes32 ethSigned = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", message));
+            if (_recoverSigner(ethSigned, signature) != owner) revert InvalidSignature();
+
+            uint256 fee = (duel.wager * protocolFeePercent) / 100;
+            uint256 refund = duel.wager - fee;
+
+            // State updates
+            duel.isActive = false;
+            usedNonces[nonce] = true;
+
+            // Refund each player their wager minus fee
+            if (!cusd.transfer(duel.player1, refund)) revert TransferFailed();
+            if (!cusd.transfer(duel.player2, refund)) revert TransferFailed();
+            if (!cusd.transfer(treasury, fee * 2)) revert TransferFailed();
+
+            emit DuelTied(duelId, refund);
+            return;
+        }
+
         if (winner != duel.player1 && winner != duel.player2) revert NotDuelParticipant();
 
         // Signature must come from the server (owner) confirming the winner
