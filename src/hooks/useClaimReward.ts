@@ -6,7 +6,7 @@ import { celo } from "wagmi/chains";
 import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
 
 export function useClaimReward() {
-  const { address, status: accountStatus, chainId } = useAccount();
+  const { address, chainId } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const { switchChainAsync } = useSwitchChain();
 
@@ -47,8 +47,9 @@ export function useClaimReward() {
       if (chainId !== celo.id) {
         try {
           await switchChainAsync({ chainId: celo.id });
-        } catch (switchErr: any) {
-          throw new Error(`Please switch to Celo network: ${switchErr?.message || switchErr}`);
+        } catch (switchErr: unknown) {
+          const msg = switchErr instanceof Error ? switchErr.message : String(switchErr);
+          throw new Error(`Please switch to Celo network: ${msg}`);
         }
       }
 
@@ -76,14 +77,16 @@ export function useClaimReward() {
       });
 
       setClaimStatus("claimed");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Claim failed:", err);
       setClaimStatus("failed");
 
       // Extract detailed failure reasons
-      let message = err?.message || String(err);
-      if (err?.cause?.message) {
-        message = err.cause.message;
+      const errObj = err instanceof Error ? err : null;
+      const causeObj = errObj && typeof (errObj as any).cause === "object" ? (errObj as any).cause : null;
+      let message = errObj?.message || String(err);
+      if (causeObj?.message) {
+        message = causeObj.message;
       }
 
       if (message.includes("User rejected the request")) {
