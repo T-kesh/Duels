@@ -83,10 +83,16 @@ export function useClaimReward() {
 
       // Extract detailed failure reasons
       const errObj = err instanceof Error ? err : null;
-      const causeObj = errObj && typeof (errObj as any).cause === "object" ? (errObj as any).cause : null;
+      
+      // Safe extraction of cause without explicit 'any' cast
+      let causeMessage: string | null = null;
+      if (errObj && "cause" in errObj && errObj.cause && typeof errObj.cause === "object" && "message" in errObj.cause) {
+        causeMessage = String((errObj.cause as { message: unknown }).message);
+      }
+
       let message = errObj?.message || String(err);
-      if (causeObj?.message) {
-        message = causeObj.message;
+      if (causeMessage) {
+        message = causeMessage;
       }
 
       if (message.includes("User rejected the request")) {
