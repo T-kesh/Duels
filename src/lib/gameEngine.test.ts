@@ -39,7 +39,7 @@ describe("gameEngine", () => {
   });
 
   it("applies lifesteal on Drain card play", () => {
-    let state = initGameState();
+    const state = initGameState();
     state.playerHp = 50; // set player HP low to measure healing
     const next = resolveTurn(state, drain, strike); // drain(20) vs strike(8 shield) -> 12 damage. heals floor(12 * 0.5) = 6. strike(30) vs drain(0 shield) -> 30 damage.
     expect(next.playerHp).toBe(50 - 30 + 6); // 26

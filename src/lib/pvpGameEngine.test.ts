@@ -46,7 +46,7 @@ describe("pvpGameEngine", () => {
   });
 
   it("applies lifesteal healing in PvP", () => {
-    let s = initPvpState();
+    const s = initPvpState();
     s.p1Hp = 50;
     const next = applyPvpRound(s, drain, strike); // drain(20) vs strike(8 shield) -> 12 dmg. heals floor(12 * 0.5) = 6. strike(30) vs drain(0 shield) -> 30 dmg.
     expect(next.p1Hp).toBe(50 - 30 + 6); // 26
