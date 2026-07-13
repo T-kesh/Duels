@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 
 import { GlowButton } from "@/components/ui/GlowButton";
+import { cn } from "@/lib/utils";
 import { BattleArena } from "@/components/ui/BattleArena";
 import { GameHeader } from "@/components/game/GameHeader";
 import { HealthBarsSection } from "@/components/game/HealthBarsSection";
@@ -252,6 +253,30 @@ export default function GamePage() {
         aiHintType={phase === "pick" ? aiHintType : null}
         onSelect={onCardSelect}
       />
+
+      {/* Floating Toast Notification */}
+      {(topUp.errorMessage || topUp.status === "done") && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-[340px] px-4 animate-fade-in">
+          <div className={cn(
+            "rounded-2xl p-4 shadow-2xl backdrop-blur-md border flex items-center gap-3",
+            topUp.status === "done" 
+              ? "bg-celo-green/90 border-celo-green/20 text-white" 
+              : "bg-destructive/90 border-destructive/20 text-white"
+          )}>
+            <span className="text-lg">
+              {topUp.status === "done" ? "⚡" : "⚠️"}
+            </span>
+            <div className="flex-1 text-left">
+              <p className="text-[10px] font-bold tracking-widest uppercase opacity-70">
+                {topUp.status === "done" ? "Success" : "Top-up Error"}
+              </p>
+              <p className="text-xs font-medium mt-0.5">
+                {topUp.status === "done" ? "Energy topped up successfully! +1 life." : topUp.errorMessage}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -10,20 +10,23 @@ export function useEnergyTopUp() {
   const [status, setStatus] = useState<"idle" | "pending" | "verifying" | "done" | "error">(
     "idle",
   );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const treasury = (process.env.NEXT_PUBLIC_TOPUP_TREASURY || "") as `0x${string}`;
   const token = (process.env.NEXT_PUBLIC_CUSD_ADDRESS || "") as `0x${string}`;
   const weiStr = process.env.NEXT_PUBLIC_TOPUP_AMOUNT_WEI || "5000000000000000";
 
   const priceLabel = !process.env.NEXT_PUBLIC_TOPUP_AMOUNT_WEI
-    ? "~0.005 USDm (set NEXT_PUBLIC_TOPUP_AMOUNT_WEI)"
-    : `~${Number(weiStr) / 1e18} USDm`;
+    ? "~0.005 cUSD (set NEXT_PUBLIC_TOPUP_AMOUNT_WEI)"
+    : `~${Number(weiStr) / 1e18} cUSD`;
 
   const enabled = Boolean(walletClient && address && treasury && token);
 
   const buyEnergy = useCallback(async () => {
+    setErrorMessage(null);
     if (!address || !walletClient || !treasury || !token) {
-      alert("Set NEXT_PUBLIC_TOPUP_TREASURY and NEXT_PUBLIC_CUSD_ADDRESS in .env.local.");
+      setErrorMessage("Configuration error: Missing treasury or token address keys.");
+      setStatus("error");
       return;
     }
     const amount = BigInt(weiStr);
@@ -52,12 +55,22 @@ export function useEnergyTopUp() {
       window.dispatchEvent(new Event("player-state-update"));
       window.dispatchEvent(new Event("energy-bonus-update"));
       setStatus("done");
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setStatus("error");
-      alert(`Top-up failed: ${String((e as Error)?.message ?? e)}`);
+      
+      let msg = e?.message || String(e);
+      if (msg.includes("User rejected")) {
+        msg = "Transaction rejected by user.";
+      } else if (msg.includes("transaction_not_found_or_failed")) {
+        msg = "Transaction verify failed on RPC server. Check your network configuration.";
+      }
+      setErrorMessage(msg);
     } finally {
-      setTimeout(() => setStatus("idle"), 2000);
+      setTimeout(() => {
+        setStatus("idle");
+        setErrorMessage(null);
+      }, 5000);
     }
   }, [address, walletClient, treasury, token, weiStr]);
 
@@ -66,5 +79,6 @@ export function useEnergyTopUp() {
     priceLabel,
     buyEnergy,
     status,
+    errorMessage,
   };
 }
