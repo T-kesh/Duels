@@ -55,11 +55,12 @@ export function useEnergyTopUp() {
       window.dispatchEvent(new Event("player-state-update"));
       window.dispatchEvent(new Event("energy-bonus-update"));
       setStatus("done");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
       setStatus("error");
       
-      let msg = e?.message || String(e);
+      const errObj = e instanceof Error ? e : null;
+      let msg = errObj?.message || String(e);
       if (msg.includes("User rejected")) {
         msg = "Transaction rejected by user.";
       } else if (msg.includes("transaction_not_found_or_failed")) {
