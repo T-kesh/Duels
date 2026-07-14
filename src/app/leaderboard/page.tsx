@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useReadContract, useAccount } from "wagmi";
 import { cn } from "@/lib/utils";
 import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
+import { usePlayerNames, NAME_PATTERN } from "@/hooks/usePlayerNames";
 
 interface LeaderboardEntry {
   rank: number;
@@ -17,6 +18,10 @@ const RANK_EMOJI: Record<number, string> = {
   2: "🥈",
   3: "🥉",
 };
+
+function shortAddress(addr: string): string {
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
 
 export default function LeaderboardPage() {
   const router = useRouter();
@@ -50,6 +55,30 @@ export default function LeaderboardPage() {
   const onChainWins = rawOnChainWins ? Number(rawOnChainWins) : 0;
 
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+
+  // Resolve display names for everyone on the board plus the connected
+  // player (whose sticky status card renders even off-board).
+  const nameAddresses = useMemo(() => {
+    const addrs = entries.map((e) => e.address);
+    if (address) addrs.push(address);
+    return addrs;
+  }, [entries, address]);
+  const { names, myName, setDisplayName, status: nameStatus, error: nameError } = usePlayerNames(nameAddresses);
+
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+
+  const displayFor = (addr: string) => names[addr.toLowerCase()] ?? shortAddress(addr);
+
+  const savingName = nameStatus === "signing" || nameStatus === "saving";
+
+  const submitName = async () => {
+    const ok = await setDisplayName(nameInput);
+    if (ok) {
+      setEditingName(false);
+      setNameInput("");
+    }
+  };
 
   // 1. Local storage stats read on mount
   useEffect(() => {
@@ -155,6 +184,83 @@ export default function LeaderboardPage() {
         </div>
       </div>
 
+      {/* Display Name Card */}
+      {address && (
+        <div className="rounded-xl p-3.5 mb-6 bg-white/[0.02] border border-white/5">
+          {!editingName ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[8px] text-muted-foreground tracking-widest uppercase mb-0.5">
+                  Display Name
+                </p>
+                {myName ? (
+                  <p className="text-sm font-semibold text-white truncate">{myName}</p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground/80 italic">
+                    Not set — you appear as {shortAddress(address)}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setNameInput(myName ?? "");
+                  setEditingName(true);
+                }}
+                className="shrink-0 px-3 py-1.5 rounded-lg border border-duel-gold/30 text-[9px] font-bold text-duel-gold uppercase tracking-[0.2em] hover:bg-duel-gold/10 transition-colors"
+              >
+                {myName ? "Change" : "Set Name"}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[8px] text-muted-foreground tracking-widest uppercase">
+                Choose a display name
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && NAME_PATTERN.test(nameInput.trim()) && !savingName) {
+                      submitName();
+                    }
+                  }}
+                  maxLength={16}
+                  placeholder="e.g. CardShark_7"
+                  autoFocus
+                  disabled={savingName}
+                  className="flex-1 min-w-0 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-white font-sans placeholder:text-muted-foreground/40 focus:outline-none focus:border-duel-gold/40"
+                />
+                <button
+                  type="button"
+                  onClick={submitName}
+                  disabled={savingName || !NAME_PATTERN.test(nameInput.trim())}
+                  className="shrink-0 px-3 py-1.5 rounded-lg bg-duel-gold text-duel-bg text-[9px] font-black uppercase tracking-[0.15em] disabled:opacity-40 hover:opacity-95 transition-opacity"
+                >
+                  {nameStatus === "signing" ? "Sign…" : nameStatus === "saving" ? "Saving…" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingName(false)}
+                  disabled={savingName}
+                  className="shrink-0 px-2 py-1.5 rounded-lg border border-white/10 text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em] hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-[9px] text-muted-foreground/70">
+                3–16 characters: letters, numbers, underscores. Saved with a free wallet signature.
+              </p>
+              {nameStatus === "error" && nameError && (
+                <p className="text-[10px] text-destructive">{nameError}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Leaderboard Table */}
       <div
         className={cn(
@@ -210,18 +316,24 @@ export default function LeaderboardPage() {
                     <div className="flex-1 px-3 min-w-0">
                       <p
                         className={cn(
-                          "text-xs tracking-wide font-mono truncate flex items-center gap-1.5",
+                          "text-xs tracking-wide truncate flex items-center gap-1.5",
+                          names[entry.address.toLowerCase()] ? "font-sans" : "font-mono",
                           entry.rank <= 3 || isMe ? "text-duel-gold font-semibold" : "text-muted-foreground",
                         )}
                         title={entry.address}
                       >
-                        <span>{entry.address.slice(0, 6)}…{entry.address.slice(-4)}</span>
+                        <span className="truncate">{displayFor(entry.address)}</span>
                         {isMe && (
-                          <span className="text-[8px] bg-duel-gold/20 text-duel-gold px-1.5 py-0.5 rounded font-sans font-bold uppercase tracking-wider scale-90">
+                          <span className="text-[8px] bg-duel-gold/20 text-duel-gold px-1.5 py-0.5 rounded font-sans font-bold uppercase tracking-wider scale-90 shrink-0">
                             You
                           </span>
                         )}
                       </p>
+                      {names[entry.address.toLowerCase()] && (
+                        <p className="text-[8px] font-mono text-muted-foreground/50 tracking-wide">
+                          {shortAddress(entry.address)}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right shrink-0 tabular-nums">
                       <p
@@ -260,8 +372,8 @@ export default function LeaderboardPage() {
             <span className="text-base">🛡️</span>
             <div>
               <p className="text-[8px] text-muted-foreground tracking-widest uppercase">Your Status</p>
-              <p className="text-xs font-mono text-white truncate max-w-[150px]">
-                {address.slice(0, 6)}…{address.slice(-4)}
+              <p className={cn("text-xs text-white truncate max-w-[150px]", myName ? "font-sans font-semibold" : "font-mono")}>
+                {myName ?? shortAddress(address)}
               </p>
             </div>
           </div>
