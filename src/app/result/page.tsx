@@ -11,7 +11,7 @@ import { VictoryCelebration } from "@/components/ui/VictoryCelebration";
 function ResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const { claimStatus, claimError, claimReward } = useClaimReward();
 
   useEffect(() => {
@@ -137,15 +137,7 @@ function ResultContent() {
           </GlowButton>
 
           <button
-            onClick={() => {
-              if (!address) {
-                alert("Connect your wallet to copy your challenge link.");
-                return;
-              }
-              const url = `${window.location.origin}/pvp?invite=${encodeURIComponent(address)}`;
-              navigator.clipboard.writeText(url);
-              alert("PvP duel link copied to clipboard!");
-            }}
+            onClick={() => router.push("/pvp")}
             className="glass border-white/5 bg-white/5 hover:bg-white/10 transition-all rounded-xl py-4 text-[10px] font-bold text-duel-gold tracking-[0.2em] uppercase"
           >
             ⚔️ Challenge a Friend
