@@ -52,9 +52,9 @@ export function CardTile({
         "w-full aspect-[2/3] transition-all duration-500 preserve-3d glass rounded-xl flex flex-col items-center justify-center p-3 text-center border-white/5",
         card.tier === 2 && "border-slate-400/30 bg-slate-400/5 shadow-[0_0_15px_rgba(148,163,184,0.1)]",
         card.tier === 3 && "border-duel-gold/30 bg-duel-gold/5 shadow-[0_0_20px_rgba(252,196,25,0.15)]",
-        selected && "border-duel-gold bg-duel-gold/10 scale-105 shadow-[0_0_20px_rgba(252,196,25,0.2)]",
+        selected && "border-duel-gold bg-duel-gold/10 scale-105 shadow-[0_0_20px_rgba(252,196,25,0.2)] animate-glow",
         used && "opacity-30 grayscale cursor-not-allowed",
-        !used && !disabled && "hover:border-duel-gold/40 hover:bg-white/5 hover:-translate-y-1 cursor-pointer",
+        !used && !disabled && "hover:border-duel-gold/40 hover:bg-white/5 hover:-translate-y-1 active:scale-95 active:duration-150 cursor-pointer",
       )}>
         <div className="absolute top-2 right-2">
           <span

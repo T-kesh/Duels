@@ -182,8 +182,13 @@ export default function GamePage() {
 
             {(phase === "resolve" || phase === "done") && selectedCard && (
               <div className="flex flex-col items-center gap-6 animate-slide-up">
-                <div className="flex justify-around w-full items-center gap-4">
-                  <div className="flex flex-col items-center">
+                <div
+                  className={cn(
+                    "flex justify-around w-full items-center gap-4",
+                    aiCard && "animate-arena-shake [animation-delay:550ms]",
+                  )}
+                >
+                  <div className={cn("flex flex-col items-center", aiCard && "animate-clash-lunge [animation-delay:550ms]")}>
                     <span className="text-[8px] text-muted-foreground tracking-widest mb-2 uppercase">
                       YOU
                     </span>
@@ -193,15 +198,15 @@ export default function GamePage() {
 
                   <div className="text-muted-foreground font-bold italic text-sm tracking-widest">VS</div>
 
-                  <div className="flex flex-col items-center">
+                  <div className={cn("flex flex-col items-center", aiCard && "animate-clash-lunge-mirror [animation-delay:550ms]")}>
                     <span className="text-[8px] text-muted-foreground tracking-widest mb-2 uppercase">
                       CIPHER
                     </span>
                     {aiCard ? (
-                      <>
-                        <div className="text-5xl mb-2 animate-shake">{aiCard.emoji}</div>
-                        <span className="text-[10px] font-bold text-duel-gold uppercase">{aiCard.name}</span>
-                      </>
+                      <div className="animate-flip-reveal">
+                        <div className="text-5xl mb-2">{aiCard.emoji}</div>
+                        <span className="text-[10px] font-bold text-duel-gold uppercase block text-center">{aiCard.name}</span>
+                      </div>
                     ) : (
                       <div className="text-4xl text-white/10 animate-pulse">?</div>
                     )}
