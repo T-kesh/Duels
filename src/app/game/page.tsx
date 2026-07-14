@@ -37,6 +37,8 @@ export default function GamePage() {
     turnError,
     lastDamageFlash,
     perfectDuelToast,
+    visualHp,
+    healFlash,
     beginDuel,
     playTurn,
   } = useGameState();
@@ -97,7 +99,9 @@ export default function GamePage() {
       <HealthBarsSection
         playerHp={gameState.playerHp}
         aiHp={gameState.aiHp}
+        visualHp={visualHp}
         damageFlash={lastDamageFlash}
+        healFlash={healFlash}
         clutchTurn={clutchTurn}
       />
 

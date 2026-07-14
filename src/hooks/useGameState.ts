@@ -40,6 +40,8 @@ export function useGameState() {
     ai: number;
   } | null>(null);
   const [perfectDuelToast, setPerfectDuelToast] = useState(false);
+  const [visualHp, setVisualHp] = useState<{ player: number; ai: number } | null>(null);
+  const [healFlash, setHealFlash] = useState<{ player: number; ai: number } | null>(null);
 
   const [gameState, setGameState] = useState<GameState>(initGameState);
   const [phase, setPhase] = useState<"draw" | "pick" | "resolve" | "done">("draw");
@@ -230,18 +232,60 @@ export function useGameState() {
         await new Promise((r) => setTimeout(r, 1200));
 
         const patch = data.state as ApiPublicState;
-        const nextSnap = mergeFromApi(gameStateRef.current, patch);
+        
+        // Calculate intermediate HP after raw damage is applied, before healing heals it back
+        const prevHp = gameStateRef.current;
+        const playerDamage = patch.lastTurn ? patch.lastTurn.aiDamageDealt : 0;
+        const aiDamage = patch.lastTurn ? patch.lastTurn.playerDamageDealt : 0;
 
-        setGameState(nextSnap);
-        gameStateRef.current = nextSnap;
+        const playerHpAfterDamage = Math.max(0, prevHp.playerHp - playerDamage);
+        const aiHpAfterDamage = Math.max(0, prevHp.aiHp - aiDamage);
+
+        // Effective lifesteal is whatever HP the server's final value recovers
+        // beyond the damage-only floor — derived rather than re-implementing
+        // the drain formula, so it can't drift from server rules and it
+        // reflects the 100 HP cap.
+        const playerHeal = Math.max(0, patch.playerHp - playerHpAfterDamage);
+        const aiHeal = Math.max(0, patch.aiHp - aiHpAfterDamage);
+
+        // Stage 1: Apply damage reduction visual immediately
+        setVisualHp({
+          player: playerHpAfterDamage,
+          ai: aiHpAfterDamage,
+        });
 
         if (patch.lastTurn) {
           setLastDamageFlash({
-            player: patch.lastTurn.aiDamageDealt,
-            ai: patch.lastTurn.playerDamageDealt,
+            player: playerDamage,
+            ai: aiDamage,
           });
-          setTimeout(() => setLastDamageFlash(null), 1200);
         }
+
+        // Wait for damage flash to play out
+        await new Promise((r) => setTimeout(r, 1000));
+        setLastDamageFlash(null);
+
+        // Stage 2: If there's lifesteal, trigger heal flash and transition to final HP values
+        if (playerHeal > 0 || aiHeal > 0) {
+          setHealFlash({
+            player: playerHeal,
+            ai: aiHeal,
+          });
+          
+          setVisualHp({
+            player: patch.playerHp,
+            ai: patch.aiHp,
+          });
+
+          await new Promise((r) => setTimeout(r, 1000));
+          setHealFlash(null);
+        }
+
+        // Stage 3: Fully commit the true game state now that visual sequences completed
+        const nextSnap = mergeFromApi(gameStateRef.current, patch);
+        setGameState(nextSnap);
+        gameStateRef.current = nextSnap;
+        setVisualHp(null);
 
         setUsedCardIds((prev) => new Set([...prev, playerCard.id]));
 
@@ -380,8 +424,10 @@ export function useGameState() {
     usedCardIds,
     aiHintType,
     turnError,
-    lastDamageFlash,
     perfectDuelToast,
+    lastDamageFlash,
+    visualHp,
+    healFlash,
     beginDuel,
     playTurn,
   };
