@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,6 @@ function ResultContent() {
   // Fire the claim exactly once, from a page the player will actually stay
   // on long enough to approve a wallet prompt — not mid-navigation.
   const claimTriggered = useRef(false);
-  const [copyToast, setCopyToast] = useState<{ ok: boolean; msg: string } | null>(null);
   useEffect(() => {
     if (won && duelId && !claimTriggered.current) {
       claimTriggered.current = true;
@@ -138,21 +137,7 @@ function ResultContent() {
           </GlowButton>
 
           <button
-            onClick={async () => {
-              if (!address) {
-                setCopyToast({ ok: false, msg: "Connect your wallet first." });
-                setTimeout(() => setCopyToast(null), 3000);
-                return;
-              }
-              const url = `${window.location.origin}/pvp?invite=${encodeURIComponent(address)}`;
-              try {
-                await navigator.clipboard.writeText(url);
-                setCopyToast({ ok: true, msg: "PvP link copied to clipboard!" });
-              } catch {
-                setCopyToast({ ok: false, msg: "Copy failed — check browser permissions." });
-              }
-              setTimeout(() => setCopyToast(null), 3000);
-            }}
+            onClick={() => router.push("/pvp")}
             className="glass border-white/5 bg-white/5 hover:bg-white/10 transition-all rounded-xl py-4 text-[10px] font-bold text-duel-gold tracking-[0.2em] uppercase"
           >
             ⚔️ Challenge a Friend
@@ -166,21 +151,6 @@ function ResultContent() {
           </button>
         </div>
       </div>
-
-      {/* Clipboard toast */}
-      {copyToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-[320px] px-4 animate-fade-in">
-          <div className={cn(
-            "rounded-2xl px-5 py-3 shadow-2xl backdrop-blur-md border flex items-center gap-3",
-            copyToast.ok
-              ? "bg-celo-green/90 border-celo-green/20 text-white"
-              : "bg-destructive/90 border-destructive/20 text-white"
-          )}>
-            <span>{copyToast.ok ? "✓" : "⚠️"}</span>
-            <p className="text-xs font-medium">{copyToast.msg}</p>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
