@@ -36,16 +36,21 @@ export function PlayerHand({
       </div>
 
       <div className="flex gap-3 h-36">
-        {hand.map((card) => (
-          <CardTile
+        {hand.map((card, i) => (
+          <div
             key={card.id}
-            card={card}
-            used={usedCardIds.has(card.id)}
-            selected={selectedCard?.id === card.id}
-            disabled={disabled}
-            aiHintType={aiHintType}
-            onClick={() => onSelect(card)}
-          />
+            className="flex-1 flex animate-deal-in"
+            style={{ animationDelay: `${i * 120}ms` }}
+          >
+            <CardTile
+              card={card}
+              used={usedCardIds.has(card.id)}
+              selected={selectedCard?.id === card.id}
+              disabled={disabled}
+              aiHintType={aiHintType}
+              onClick={() => onSelect(card)}
+            />
+          </div>
         ))}
       </div>
     </footer>

@@ -172,6 +172,18 @@ code, .font-mono {
   animation: skeleton-shimmer 1.5s infinite linear;
 }
 
+/* Respect reduced-motion for every utility/keyframe animation in the app.
+   Canvas particle systems check the media query in JS (VictoryCelebration). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;

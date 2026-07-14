@@ -33,12 +33,12 @@ export function HealthBarsSection({
       <div className="flex-1 relative">
         <HpBar hp={activePlayerHp} label="YOU" />
         {damageFlash && damageFlash.player > 0 && (
-          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-destructive text-sm font-bold animate-fade-in">
+          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-destructive text-sm font-bold animate-float-up drop-shadow-[0_0_6px_rgba(255,77,79,0.6)]">
             −{damageFlash.player}
           </span>
         )}
         {healFlash && healFlash.player > 0 && (
-          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-celo-green text-sm font-bold animate-slide-up">
+          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-celo-green text-sm font-bold animate-float-up drop-shadow-[0_0_6px_rgba(53,212,106,0.6)]">
             +{healFlash.player}
           </span>
         )}
@@ -47,12 +47,12 @@ export function HealthBarsSection({
       <div className="flex-1 relative">
         <HpBar hp={activeAiHp} label="CIPHER" />
         {damageFlash && damageFlash.ai > 0 && (
-          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-celo-green text-sm font-bold animate-fade-in">
+          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-celo-green text-sm font-bold animate-float-up drop-shadow-[0_0_6px_rgba(53,212,106,0.6)]">
             −{damageFlash.ai}
           </span>
         )}
         {healFlash && healFlash.ai > 0 && (
-          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-celo-green text-sm font-bold animate-slide-up">
+          <span className="absolute top-1/2 right-2 -translate-y-1/2 text-celo-green text-sm font-bold animate-float-up drop-shadow-[0_0_6px_rgba(53,212,106,0.6)]">
             +{healFlash.ai}
           </span>
         )}
