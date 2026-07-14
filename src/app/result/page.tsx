@@ -11,7 +11,7 @@ import { VictoryCelebration } from "@/components/ui/VictoryCelebration";
 function ResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const { claimStatus, claimError, claimReward } = useClaimReward();
 
   useEffect(() => {
