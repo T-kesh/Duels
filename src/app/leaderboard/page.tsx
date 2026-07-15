@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useReadContract, useAccount } from "wagmi";
 import { cn } from "@/lib/utils";
+import { Crown, Flame, ShieldCheck } from "lucide-react";
 import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
 import { usePlayerNames, NAME_PATTERN } from "@/hooks/usePlayerNames";
 
@@ -167,8 +168,9 @@ export default function LeaderboardPage() {
           <p className="text-[9px] text-muted-foreground tracking-[0.2em] uppercase mb-1">
             CURRENT STREAK
           </p>
-          <p className="text-2xl font-black text-duel-gold tabular-nums">
-            {playerStreak > 0 ? `🔥${playerStreak}` : "0"}
+          <p className="text-2xl font-black text-duel-gold tabular-nums inline-flex items-center gap-1">
+            {playerStreak > 0 && <Flame className="w-5 h-5" fill="currentColor" />}
+            {playerStreak}
           </p>
           <p className="text-[8px] text-muted-foreground/80 mt-0.5">Active Run</p>
         </div>
@@ -177,8 +179,9 @@ export default function LeaderboardPage() {
           <p className="text-[9px] text-muted-foreground tracking-[0.2em] uppercase mb-1">
             BEST STREAK
           </p>
-          <p className="text-2xl font-black text-duel-gold tabular-nums">
-            {playerBestStreak > 0 ? `👑${playerBestStreak}` : "0"}
+          <p className="text-2xl font-black text-duel-gold tabular-nums inline-flex items-center gap-1">
+            {playerBestStreak > 0 && <Crown className="w-5 h-5" fill="currentColor" />}
+            {playerBestStreak}
           </p>
           <p className="text-[8px] text-muted-foreground/80 mt-0.5">All-time High</p>
         </div>
@@ -369,7 +372,7 @@ export default function LeaderboardPage() {
       {address && !loading && !loadingOnChainWins && !isMeVisible && (
         <div className="rounded-xl p-3 bg-white/[0.03] border border-white/5 mb-6 flex items-center justify-between animate-fade-in">
           <div className="flex items-center gap-3">
-            <span className="text-base">🛡️</span>
+            <ShieldCheck className="w-5 h-5 text-duel-gold/70" />
             <div>
               <p className="text-[8px] text-muted-foreground tracking-widest uppercase">Your Status</p>
               <p className={cn("text-xs text-white truncate max-w-[150px]", myName ? "font-sans font-semibold" : "font-mono")}>

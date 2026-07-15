@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
+import { AlertTriangle, Shield, Swords, Zap } from "lucide-react";
 
 import { GlowButton } from "@/components/ui/GlowButton";
 import { cn } from "@/lib/utils";
@@ -118,8 +119,9 @@ export default function GamePage() {
       )}
 
       {turnError && (
-        <div className="mb-4 text-center glass border-duel-gold/30 px-4 py-2 rounded-xl text-[11px] text-duel-gold animate-fade-in">
-          ⚠️ {turnError}
+        <div className="mb-4 text-center glass border-duel-gold/30 px-4 py-2 rounded-xl text-[11px] text-duel-gold animate-fade-in inline-flex items-center justify-center gap-1.5 w-full">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          {turnError}
         </div>
       )}
 
@@ -232,9 +234,9 @@ export default function GamePage() {
 
                     <div className="absolute inset-x-0 bottom-0 py-2 bg-duel-gold/10 border-t border-white/5 flex flex-col items-center">
                       <span className="text-[8px] text-duel-gold/60 tracking-widest uppercase mb-1">Hint</span>
-                      {aiHintType === "attack" && <span className="text-sm">⚔️</span>}
-                      {aiHintType === "defend" && <span className="text-sm">🛡️</span>}
-                      {aiHintType === "special" && <span className="text-sm">⚡</span>}
+                      {aiHintType === "attack" && <Swords className="w-4 h-4 text-destructive/80" />}
+                      {aiHintType === "defend" && <Shield className="w-4 h-4 text-sky-400/80" />}
+                      {aiHintType === "special" && <Zap className="w-4 h-4 text-duel-gold/80" fill="currentColor" />}
                     </div>
                   </div>
 
@@ -273,7 +275,7 @@ export default function GamePage() {
               : "bg-destructive/90 border-destructive/20 text-white"
           )}>
             <span className="text-lg">
-              {topUp.status === "done" ? "⚡" : "⚠️"}
+              {topUp.status === "done" ? <Zap className="w-5 h-5" fill="currentColor" /> : <AlertTriangle className="w-5 h-5" />}
             </span>
             <div className="flex-1 text-left">
               <p className="text-[10px] font-bold tracking-widest uppercase opacity-70">
