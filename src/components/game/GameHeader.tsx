@@ -1,5 +1,7 @@
 "use client";
 
+import { Zap } from "lucide-react";
+
 interface GameHeaderProps {
   /** Lives from the timed recharge bucket (cap `maxBaseLives`). */
   rechargeableLives: number;
@@ -28,7 +30,7 @@ export function GameHeader({
       <div className="flex gap-2 items-center">
         <div className="px-3 py-1.5 glass border-white/10 rounded-lg flex flex-col gap-0.5 min-w-[4.75rem]">
           <div className="flex items-center gap-1.5 justify-end">
-            <span className="text-[10px] text-muted-foreground font-bold">⚡</span>
+            <Zap className="w-3 h-3 text-duel-gold/80" fill="currentColor" />
             <span className="text-[10px] font-mono font-bold text-white tabular-nums">
               {totalPlays}
             </span>

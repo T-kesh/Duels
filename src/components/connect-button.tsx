@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useConnect, useAccount, useDisconnect } from "wagmi";
+import { Wallet } from "lucide-react";
 import { GlowButton } from "./ui/GlowButton";
 
 function connectorLabel(id: string, name: string): string {
@@ -9,11 +10,6 @@ function connectorLabel(id: string, name: string): string {
   if (name.toLowerCase().includes("minipay")) return "MiniPay";
   if (id === "injected") return "Browser Wallet";
   return name || "Connect Wallet";
-}
-
-function connectorIcon(id: string, name: string): string {
-  if (id === "metaMask" || name.toLowerCase().includes("metamask")) return "🦊";
-  return "👛";
 }
 
 export function ConnectButton() {
@@ -81,11 +77,10 @@ export function ConnectButton() {
           key={connector!.uid}
           onClick={() => connect({ connector: connector! })}
           disabled={isPending}
-          className="w-full"
+          className="w-full gap-2"
         >
-          {isPending
-            ? "Connecting..."
-            : `${connectorIcon(connector!.id, connector!.name)} Connect with ${connectorLabel(connector!.id, connector!.name)}`}
+          <Wallet className="w-4 h-4" />
+          {isPending ? "Connecting..." : `Connect with ${connectorLabel(connector!.id, connector!.name)}`}
         </GlowButton>
       ))}
       {otherConnectors.map((connector) => (
@@ -94,11 +89,10 @@ export function ConnectButton() {
           variant="outline"
           onClick={() => connect({ connector })}
           disabled={isPending}
-          className="w-full"
+          className="w-full gap-2"
         >
-          {isPending
-            ? "Connecting..."
-            : `${connectorIcon(connector.id, connector.name)} ${connectorLabel(connector.id, connector.name)}`}
+          <Wallet className="w-4 h-4" />
+          {isPending ? "Connecting..." : connectorLabel(connector.id, connector.name)}
         </GlowButton>
       ))}
     </div>
