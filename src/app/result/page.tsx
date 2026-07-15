@@ -9,7 +9,11 @@ import { GlowButton } from "@/components/ui/GlowButton";
 import { cn } from "@/lib/utils";
 import { useClaimReward } from "@/hooks/useClaimReward";
 import { VictoryCelebration } from "@/components/ui/VictoryCelebration";
-import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
+import {
+  DUEL_REWARDS_ADDRESS,
+  DUEL_REWARDS_ABI,
+  DUEL_REWARDS_VERSION,
+} from "@/constants/contracts";
 
 /** Counts from 0 to `target` over ~0.8s, starting after `delayMs`. */
 function useCountUp(target: number, delayMs: number): number {
@@ -51,7 +55,7 @@ function ResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { isConnected } = useAccount();
-  const { claimStatus, claimError, claimReward } = useClaimReward();
+  const { claimStatus, claimError, claimedReward, claimReward } = useClaimReward();
 
   useEffect(() => {
     if (!isConnected) {
@@ -68,16 +72,23 @@ function ResultContent() {
   const playerHpDisplay = useCountUp(playerHp, 900);
   const aiHpDisplay = useCountUp(aiHp, 900);
 
-  // Reward comes from the contract, not a hardcoded figure — the owner can
-  // retune rewardAmount at any time and this page must not lie about payouts.
+  // Reward display. V1: fixed rewardAmount() from the contract. V2: CIPHER
+  // decides per duel — the real amount arrives with the claim signature, so
+  // until then show nothing rather than a number that might be wrong.
   const { data: rawRewardAmount } = useReadContract({
     address: DUEL_REWARDS_ADDRESS as `0x${string}`,
     abi: DUEL_REWARDS_ABI,
     functionName: "rewardAmount",
-    query: { enabled: won },
+    query: { enabled: won && DUEL_REWARDS_VERSION === 1 },
   });
   const rewardLabel =
-    rawRewardAmount !== undefined ? `${formatEther(rawRewardAmount)} USDm` : null;
+    DUEL_REWARDS_VERSION === 2
+      ? claimedReward?.amountCusd
+        ? `${claimedReward.amountCusd} USDm`
+        : null
+      : rawRewardAmount !== undefined
+      ? `${formatEther(rawRewardAmount)} USDm`
+      : null;
 
   // Fire the claim exactly once, from a page the player will actually stay
   // on long enough to approve a wallet prompt — not mid-navigation.
@@ -131,9 +142,28 @@ function ResultContent() {
           <div className="bg-celo-green/5 border border-celo-green/20 rounded-2xl p-5 mb-10 animate-rise-in [animation-delay:1100ms]">
             <p className="text-[9px] text-celo-green font-bold tracking-[0.2em] uppercase mb-2">Loot Secured</p>
             {rewardLabel ? (
-              <p className="text-3xl font-bold text-white mb-2">{rewardLabel}</p>
+              <p className={cn(
+                "text-3xl font-bold mb-2 animate-count-pop",
+                claimedReward?.tier === "generous" ? "text-duel-gold" : "text-white",
+              )}>{rewardLabel}</p>
+            ) : claimStatus === "failed" ? (
+              // V2 claim failed before CIPHER priced the duel — no number to show.
+              <p className="text-3xl font-bold text-white/30 mb-2">—</p>
             ) : (
               <div className="h-9 w-32 mx-auto mb-2 rounded animate-skeleton" />
+            )}
+
+            {claimedReward?.flavor && (
+              <p className={cn(
+                "text-[11px] italic leading-relaxed max-w-[240px] mx-auto mb-3 animate-fade-in",
+                claimedReward.tier === "generous"
+                  ? "text-duel-gold"
+                  : claimedReward.tier === "worthy"
+                  ? "text-celo-green/80"
+                  : "text-muted-foreground",
+              )}>
+                &ldquo;{claimedReward.flavor}&rdquo;
+              </p>
             )}
 
             {!duelId && (

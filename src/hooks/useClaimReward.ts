@@ -3,7 +3,21 @@
 import { useState, useCallback, useRef } from "react";
 import { useAccount, useWriteContract, useSwitchChain } from "wagmi";
 import { celo } from "wagmi/chains";
-import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
+import {
+  DUEL_REWARDS_ADDRESS,
+  DUEL_REWARDS_ABI,
+  DUEL_REWARDS_V2_ABI,
+  DUEL_REWARDS_VERSION,
+} from "@/constants/contracts";
+
+export interface ClaimedReward {
+  /** Formatted cUSD amount, e.g. "0.008" (V2 only; null on V1). */
+  amountCusd: string | null;
+  /** CIPHER's payout tier (V2 only). */
+  tier: "base" | "worthy" | "generous" | null;
+  /** CIPHER's voice line for the payout (V2 only). */
+  flavor: string | null;
+}
 
 export function useClaimReward() {
   const { address, chainId } = useAccount();
@@ -14,6 +28,7 @@ export function useClaimReward() {
     "idle",
   );
   const [claimError, setClaimError] = useState<string | null>(null);
+  const [claimedReward, setClaimedReward] = useState<ClaimedReward | null>(null);
 
   const addressRef = useRef(address);
   addressRef.current = address;
@@ -67,14 +82,33 @@ export function useClaimReward() {
         throw new Error(payload.error ?? "Failed to get reward signature from server.");
       }
 
-      const { nonce, signature } = await res.json();
+      const payload = await res.json();
+      const { nonce, signature } = payload;
 
-      await writeContractAsync({
-        address: DUEL_REWARDS_ADDRESS as `0x${string}`,
-        abi: DUEL_REWARDS_ABI,
-        functionName: "claimReward",
-        args: [nonce, signature],
-      });
+      if (DUEL_REWARDS_VERSION === 2) {
+        // V2: the signed amount must be submitted verbatim — the contract
+        // rejects any other value.
+        const amountWei = BigInt(payload.amountWei);
+        setClaimedReward({
+          amountCusd: payload.amountCusd ?? null,
+          tier: payload.tier ?? null,
+          flavor: payload.flavor ?? null,
+        });
+
+        await writeContractAsync({
+          address: DUEL_REWARDS_ADDRESS as `0x${string}`,
+          abi: DUEL_REWARDS_V2_ABI,
+          functionName: "claimReward",
+          args: [amountWei, nonce, signature],
+        });
+      } else {
+        await writeContractAsync({
+          address: DUEL_REWARDS_ADDRESS as `0x${string}`,
+          abi: DUEL_REWARDS_ABI,
+          functionName: "claimReward",
+          args: [nonce, signature],
+        });
+      }
 
       setClaimStatus("claimed");
     } catch (err: unknown) {
@@ -110,6 +144,7 @@ export function useClaimReward() {
   return {
     claimStatus,
     claimError,
+    claimedReward,
     claimReward,
   };
 }
