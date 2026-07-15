@@ -20,6 +20,8 @@ interface StoredPlayer {
   bonusLives: number;
   lastRechargeMs: number;
   totalWins: number;
+  /** Consecutive AI-duel wins, server-authoritative (reward tiers key on it). */
+  winStreak?: number;
 }
 
 function memoryPlayers(): Map<string, StoredPlayer> {
@@ -190,8 +192,23 @@ export async function getTotalWins(address: string): Promise<number> {
 export async function incrementWins(address: string): Promise<number> {
   const stored = await loadStored(address);
   stored.totalWins += 1;
+  stored.winStreak = (stored.winStreak ?? 0) + 1;
   await saveStored(address, stored);
   return stored.totalWins;
+}
+
+/** Reset the win streak after a lost AI duel. */
+export async function resetWinStreak(address: string): Promise<void> {
+  const stored = await loadStored(address);
+  if ((stored.winStreak ?? 0) === 0) return;
+  stored.winStreak = 0;
+  await saveStored(address, stored);
+}
+
+/** Server-authoritative consecutive-win count (includes the latest win). */
+export async function getWinStreak(address: string): Promise<number> {
+  const stored = await loadStored(address);
+  return stored.winStreak ?? 0;
 }
 
 export async function grantPerfectDuelBonus(address: string): Promise<void> {
