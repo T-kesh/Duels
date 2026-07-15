@@ -143,6 +143,20 @@ const config: Config = {
           "80%": { transform: "translateY(-22px) scale(1)", opacity: "0.9" },
           "100%": { transform: "translateY(-32px) scale(0.95)", opacity: "0" },
         },
+        "rise-in": {
+          "0%": { transform: "translateY(24px)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        "hero-drop": {
+          "0%": { transform: "translateY(-30px) scale(0.85)", opacity: "0" },
+          "60%": { transform: "translateY(4px) scale(1.03)", opacity: "1" },
+          "100%": { transform: "translateY(0) scale(1)", opacity: "1" },
+        },
+        "count-pop": {
+          "0%": { transform: "scale(0.6)", opacity: "0" },
+          "70%": { transform: "scale(1.15)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
       },
       animation: {
         pulse: "pulse 1s ease-in-out infinite",
@@ -160,6 +174,9 @@ const config: Config = {
         "clash-lunge-mirror": "clash-lunge-mirror 0.45s cubic-bezier(0.36, 0, 0.66, 1) both",
         "arena-shake": "arena-shake 0.45s linear both",
         "float-up": "float-up 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "rise-in": "rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "hero-drop": "hero-drop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "count-pop": "count-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both",
       },
     },
 
