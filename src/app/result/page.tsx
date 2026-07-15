@@ -2,12 +2,14 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
+import { formatEther } from "viem";
 import { Swords } from "lucide-react";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { cn } from "@/lib/utils";
 import { useClaimReward } from "@/hooks/useClaimReward";
 import { VictoryCelebration } from "@/components/ui/VictoryCelebration";
+import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_ABI } from "@/constants/contracts";
 
 /** Counts from 0 to `target` over ~0.8s, starting after `delayMs`. */
 function useCountUp(target: number, delayMs: number): number {
@@ -66,6 +68,17 @@ function ResultContent() {
   const playerHpDisplay = useCountUp(playerHp, 900);
   const aiHpDisplay = useCountUp(aiHp, 900);
 
+  // Reward comes from the contract, not a hardcoded figure — the owner can
+  // retune rewardAmount at any time and this page must not lie about payouts.
+  const { data: rawRewardAmount } = useReadContract({
+    address: DUEL_REWARDS_ADDRESS as `0x${string}`,
+    abi: DUEL_REWARDS_ABI,
+    functionName: "rewardAmount",
+    query: { enabled: won },
+  });
+  const rewardLabel =
+    rawRewardAmount !== undefined ? `${formatEther(rawRewardAmount)} USDm` : null;
+
   // Fire the claim exactly once, from a page the player will actually stay
   // on long enough to approve a wallet prompt — not mid-navigation.
   const claimTriggered = useRef(false);
@@ -117,7 +130,11 @@ function ResultContent() {
         {won && (
           <div className="bg-celo-green/5 border border-celo-green/20 rounded-2xl p-5 mb-10 animate-rise-in [animation-delay:1100ms]">
             <p className="text-[9px] text-celo-green font-bold tracking-[0.2em] uppercase mb-2">Loot Secured</p>
-            <p className="text-3xl font-bold text-white mb-2">0.05 USDm</p>
+            {rewardLabel ? (
+              <p className="text-3xl font-bold text-white mb-2">{rewardLabel}</p>
+            ) : (
+              <div className="h-9 w-32 mx-auto mb-2 rounded animate-skeleton" />
+            )}
 
             {!duelId && (
               <p className="text-[10px] text-duel-gold/80 leading-relaxed max-w-[220px] mx-auto">
