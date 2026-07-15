@@ -45,8 +45,9 @@ async function main() {
 
   console.log("\nNext steps:");
   console.log(`  1. Set NEXT_PUBLIC_DUEL_REWARDS_ADDRESS=${address}`);
-  console.log("  2. Fund the pool: transfer cUSD to the contract address");
-  console.log(`  3. Verify: npx hardhat verify --network ${network} ${address} ${cusd} ${treasury}`);
+  console.log("  2. Set NEXT_PUBLIC_DUEL_REWARDS_VERSION=2 (enables variable-amount claims)");
+  console.log("  3. Fund the pool: transfer cUSD to the contract address");
+  console.log(`  4. Verify: npx hardhat verify --network ${network} ${address} ${cusd} ${treasury}`);
 }
 
 main().catch((error) => {
