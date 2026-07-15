@@ -18,6 +18,13 @@ export interface DuelSession {
   lastAiHintType?: AiHintType;
   /** Prevent double issuance of signatures for AI reward mode. */
   rewardSignatureIssued?: boolean;
+  rewardDecision?: {
+    tier: string;
+    amountWei: string;
+    flavor: string;
+  };
+  rewardNonce?: string;
+  rewardSignature?: string;
 }
 
 const TTL_SECONDS = 45 * 60; // 45 minutes
