@@ -12,7 +12,15 @@ import {
   type AiHintType,
 } from "@/lib/duelSessionStore";
 import { checkRateLimit } from "@/lib/rateLimit";
-import { grantPerfectDuelBonus, incrementWins, getTotalWins } from "@/lib/playerStore";
+import {
+  grantPerfectDuelBonus,
+  incrementWins,
+  getTotalWins,
+  resetWinStreak,
+  getWinStreak,
+} from "@/lib/playerStore";
+import { DUEL_REWARDS_VERSION } from "@/constants/contracts";
+import { decideReward } from "@/lib/rewardTiers";
 
 type DuelHistoryEntry = {
   won: boolean;
@@ -133,10 +141,25 @@ export async function POST(req: NextRequest) {
     let perfectDuelBonus = false;
     if (nextState.isOver && nextState.playerWon) {
       await incrementWins(session.playerAddress);
+      
+      if (DUEL_REWARDS_VERSION !== 1) {
+        const streak = await getWinStreak(session.playerAddress);
+        const reward = decideReward(nextState.playerHp, streak);
+        session.rewardDecision = {
+          tier: reward.tier,
+          amountWei: reward.amountWei.toString(),
+          flavor: reward.flavor,
+        };
+      }
+
       if (nextState.playerHp >= Math.floor(STARTING_HP * 0.8)) {
         await grantPerfectDuelBonus(session.playerAddress);
         perfectDuelBonus = true;
       }
+      await saveAiDuelSession(session);
+    } else if (nextState.isOver) {
+      await resetWinStreak(session.playerAddress);
+      await saveAiDuelSession(session);
     }
 
     const state = {

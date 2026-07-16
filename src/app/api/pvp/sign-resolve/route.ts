@@ -74,18 +74,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
     }
 
+    const duelIdBn = BigInt(duelId);
+
     // Single-issuance gate: only one valid signature per duel.
+    if (session.resolveSignatureIssued) {
+      if (session.resolveNonce && session.resolveSignature) {
+        return NextResponse.json({
+          duelId: duelIdBn.toString(),
+          winner: winnerAddress,
+          winnerSlot,
+          nonce: session.resolveNonce,
+          signature: session.resolveSignature,
+          player1: getAddress(duel.player1 as Hex),
+          player2: getAddress(duel.player2 as Hex),
+        });
+      }
+      return NextResponse.json({ error: "resolve_already_issued" }, { status: 409 });
+    }
+
     const redis = getRedis();
     if (redis) {
       const locked = await setNxEx(`pvp:claim:lock:${duelId}`, winnerAddress, 60 * 60);
       if (!locked) {
         return NextResponse.json({ error: "resolve_already_issued" }, { status: 409 });
       }
-    } else if (session.resolveSignatureIssued) {
-      return NextResponse.json({ error: "resolve_already_issued" }, { status: 409 });
     }
 
-    const duelIdBn = BigInt(duelId);
     const nonceBytes32 = ethers.hexlify(ethers.randomBytes(32)) as Hex;
 
     // Must match DuelRewards.resolveDuel: keccak256(abi.encodePacked(duelId, winner, nonce)).
@@ -99,6 +113,8 @@ export async function POST(req: NextRequest) {
     const signature = await wallet.signMessage(ethers.getBytes(innerMessage));
 
     session.resolveSignatureIssued = true;
+    session.resolveNonce = nonceBytes32;
+    session.resolveSignature = signature;
     await savePvpSession(session);
 
     return NextResponse.json({

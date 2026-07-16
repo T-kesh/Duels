@@ -25,6 +25,8 @@ export interface PvpDuelSession {
   winnerSlot?: PvpSlot;
   isOver?: boolean;
   resolveSignatureIssued?: boolean;
+  resolveNonce?: string;
+  resolveSignature?: string;
   expiresAtMs: number;
 }
 
