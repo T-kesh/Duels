@@ -36,7 +36,12 @@ const TIER_BOUNDS: Record<RewardTier, { min: number; max: number }> = {
   generous: { min: 12, max: 15 },
 };
 
-const GENEROUS_CHANCE = 0.1;
+// ~4 % of worthy wins escalate to generous — tunable via env without a deploy.
+// Keep this low: the on-screen flavor "CIPHER is feeling generous" should feel
+// like a genuine surprise, not a routine event.
+const GENEROUS_CHANCE = parseFloat(
+  process.env.REWARD_GENEROUS_CHANCE ?? "0.04",
+);
 
 const FLAVOR: Record<RewardTier, string[]> = {
   base: [
@@ -91,7 +96,10 @@ export function decideReward(
     tier = "worthy";
     // Grace roll: only quality play can be elevated to generous, so the line
     // "CIPHER is feeling generous" always lands on a genuinely strong duel.
-    if (Math.random() < GENEROUS_CHANCE) tier = "generous";
+    // crypto.randomInt(10000) gives a uniform integer in [0, 9999]; compare
+    // against the chance scaled to basis-points so floating-point is exact.
+    const basisPoints = Math.round(GENEROUS_CHANCE * 10000);
+    if (crypto.randomInt(10000) < basisPoints) tier = "generous";
   }
 
   const { min, max } = TIER_BOUNDS[tier];
