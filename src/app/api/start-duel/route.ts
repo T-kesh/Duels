@@ -11,6 +11,7 @@ import { parsePlayerAddress } from "@/lib/addresses";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { consumeLife } from "@/lib/playerStore";
 import { consumeStartDuelChallenge, startDuelChallengeMessage } from "@/lib/duelAuth";
+import { randomHint } from "@/lib/cipherStrategy";
 
 interface Body {
   playerAddress?: string;
@@ -65,9 +66,11 @@ export async function POST(req: NextRequest) {
     const session = await createAiDuelSession(duelId, playerAddress);
     session.hand = hand;
     session.stateJson = JSON.stringify(initGameState());
+    // Server-generated hint for turn 1 — the client only displays it.
+    session.lastAiHintType = randomHint();
     await saveAiDuelSession(session);
 
-    return NextResponse.json({ duelId, hand });
+    return NextResponse.json({ duelId, hand, aiHintType: session.lastAiHintType });
   } catch (err: unknown) {
     console.error("/api/start-duel", err);
     const message = err instanceof Error ? err.message : "Could not deal hand";

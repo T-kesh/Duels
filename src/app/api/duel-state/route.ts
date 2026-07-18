@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
       playerWon: state.playerWon,
       turns: state.turns,
       usedCardIds: session.transcript.map((t) => t.playerCard.id),
+      aiHintType: session.lastAiHintType ?? "special",
     });
   } catch (err) {
     console.error("/api/duel-state", err);
