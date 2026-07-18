@@ -22,10 +22,23 @@
 require("dotenv").config({ path: ".env.local" });
 const { ethers } = require("ethers");
 
-const RPC = "https://forno.celo-sepolia.celo-testnet.org";
-// Redeployed with correct cUSD (0xEF4d55...) confirmed via Celo registry.
-const CONTRACT_ADDRESS = "0x6C0bDe6d0639FA6586108678567320b7e8Bb5Dd2";
-const CUSD_ADDRESS = "0xEF4d55D6dE8e8d73232827Cd1e9b2F2dBb45bC80";
+const chainIdFromEnv = process.env.DUEL_REWARDS_CHAIN_ID
+  ? parseInt(process.env.DUEL_REWARDS_CHAIN_ID)
+  : 42220; // Default Celo mainnet
+
+const isTestnet = chainIdFromEnv === 11142220 || chainIdFromEnv === 44787;
+
+const RPC = isTestnet
+  ? "https://forno.celo-sepolia.celo-testnet.org"
+  : "https://forno.celo.org";
+
+const CONTRACT_ADDRESS =
+  process.env.NEXT_PUBLIC_DUEL_REWARDS_ADDRESS ||
+  "0x1c99949C4800B0d9A8c05560Bc652E76356EfFa4"; // Default mainnet V2
+
+const CUSD_ADDRESS = isTestnet
+  ? "0xEF4d55D6dE8e8d73232827Cd1e9b2F2dBb45bC80"
+  : "0x765DE816845861e75A25fCA122bb6898B8B1282a";
 
 const FIRST_DEPLOY_WRONG_CUSD = false;
 
@@ -82,7 +95,7 @@ async function main() {
   const network = await provider.getNetwork();
   const chainId = network.chainId;
 
-  console.log("DuelRewardsV2 — Celo Sepolia smoke test");
+  console.log("DuelRewardsV2 — Contract smoke test");
   console.log("Contract:  ", CONTRACT_ADDRESS);
   console.log("Signer:    ", wallet.address);
   console.log("Chain ID:  ", chainId.toString());
@@ -189,10 +202,6 @@ async function main() {
     console.log("\n❌ Some tests failed — see above.\n");
   } else {
     console.log("\n✅ All checks passed.\n");
-    if (FIRST_DEPLOY_WRONG_CUSD) {
-      console.log("Next step: redeploy with correct cUSD to test real transfers.");
-      console.log("  npx hardhat run scripts/deploy-v2.cjs --network celoSepolia");
-    }
   }
 }
 
