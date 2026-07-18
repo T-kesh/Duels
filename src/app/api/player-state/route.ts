@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { parsePlayerAddress } from "@/lib/addresses";
-import { getPlayerState, seedWinsIfHigher, MAX_LIVES } from "@/lib/playerStore";
+import { getPlayerState, MAX_LIVES } from "@/lib/playerStore";
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,13 +13,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "invalid_player_address" }, { status: 400 });
     }
 
-    const seedWins = req.nextUrl.searchParams.get("seedWins");
-    if (seedWins !== null) {
-      const parsed = parseInt(seedWins, 10);
-      if (Number.isFinite(parsed)) {
-        await seedWinsIfHigher(address, parsed);
-      }
-    }
+    // NOTE: the old `seedWins` migration parameter was removed deliberately —
+    // it let any client set an arbitrary totalWins, which unlocks tier-3
+    // cards and (on V2) feeds reward-tier inputs. Wins are now earned only
+    // through server-resolved duels.
 
     const state = await getPlayerState(address);
 

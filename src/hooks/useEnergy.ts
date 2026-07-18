@@ -20,17 +20,7 @@ export function useEnergy() {
     }
 
     try {
-      const seedWins =
-        typeof window !== "undefined"
-          ? parseInt(localStorage.getItem("duel_total_wins") ?? "0", 10)
-          : 0;
-
-      const qs = new URLSearchParams({
-        address,
-        ...(seedWins > 0 ? { seedWins: String(seedWins) } : {}),
-      });
-
-      const res = await fetch(`/api/player-state?${qs}`);
+      const res = await fetch(`/api/player-state?${new URLSearchParams({ address })}`);
       if (!res.ok) return;
 
       const data = await res.json();
