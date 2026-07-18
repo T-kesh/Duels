@@ -43,6 +43,16 @@ async function main() {
 
   const address = await contract.getAddress();
   console.log("\nDuelRewardsV2 deployed:", address);
+
+  // Public RPC nodes can take a few seconds to index fresh bytecode.
+  // Calling view functions immediately returns 0x (BAD_DATA). Wait briefly.
+  process.stdout.write("Waiting for RPC indexing");
+  for (let i = 0; i < 4; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    process.stdout.write(".");
+  }
+  console.log(" done");
+
   console.log("maxRewardAmount:", hre.ethers.formatEther(await contract.maxRewardAmount()), "cUSD");
   console.log("dailyClaimLimit:", (await contract.dailyClaimLimit()).toString());
 
