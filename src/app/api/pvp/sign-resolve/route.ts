@@ -10,6 +10,7 @@ import { readOnChainDuel, type OnChainDuel } from "@/lib/pvpChain";
 import { getPvpSession, savePvpSession } from "@/lib/pvpSessionStore";
 import { determinePvpOutcome, type PvpSlot } from "@/lib/pvpGameEngine";
 import { getRedis, setNxEx } from "@/lib/redis";
+import { DUEL_REWARDS_ADDRESS, DUEL_REWARDS_VERSION } from "@/constants/contracts";
 
 interface Body {
   duelId?: string | number | bigint;
@@ -102,13 +103,34 @@ export async function POST(req: NextRequest) {
 
     const nonceBytes32 = ethers.hexlify(ethers.randomBytes(32)) as Hex;
 
-    // Must match DuelRewards.resolveDuel: keccak256(abi.encodePacked(duelId, winner, nonce)).
-    const innerMessage = ethers.keccak256(
-      ethers.solidityPacked(
-        ["uint256", "address", "bytes32"],
-        [duelIdBn, winnerAddress, nonceBytes32],
-      ),
-    );
+    // Chain ID for V2 cross-deployment replay protection — must match what the
+    // contract reads from block.chainid (42220 on Celo mainnet).
+    const chainId = process.env.DUEL_REWARDS_CHAIN_ID
+      ? BigInt(process.env.DUEL_REWARDS_CHAIN_ID)
+      : BigInt(42220);
+
+    // Message encoding must match DuelRewardsV2.resolveDuel exactly.
+    //
+    // V1: keccak256(abi.encodePacked(duelId, winner, nonce))
+    // V2: keccak256(abi.encodePacked(duelId, winner, nonce, address(this), block.chainid))
+    //
+    // The V2 binding to contract address + chainId prevents a signature issued
+    // against a testnet deployment being replayed on mainnet V2, or against the
+    // V1 contract if it still holds funds.
+    const innerMessage =
+      DUEL_REWARDS_VERSION === 2
+        ? ethers.keccak256(
+            ethers.solidityPacked(
+              ["uint256", "address", "bytes32", "address", "uint256"],
+              [duelIdBn, winnerAddress, nonceBytes32, DUEL_REWARDS_ADDRESS, chainId],
+            ),
+          )
+        : ethers.keccak256(
+            ethers.solidityPacked(
+              ["uint256", "address", "bytes32"],
+              [duelIdBn, winnerAddress, nonceBytes32],
+            ),
+          );
     const wallet = new ethers.Wallet(privateKey);
     const signature = await wallet.signMessage(ethers.getBytes(innerMessage));
 
