@@ -17,9 +17,8 @@ const hre = require("hardhat");
 const DEFAULT_CUSD = {
   celo:        "0x765DE816845861e75A25fCA122bb6898B8B1282a",
   alfajores:   "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1",
-  // Celo Sepolia testnet (current recommended testnet; Alfajores forno is DNS-dead).
-  // Verify at https://sepolia.celoscan.io before deploying.
-  celoSepolia: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B",
+  // Confirmed via Celo registry (getAddressForString('StableToken')) on chainId 11142220.
+  celoSepolia: "0xEF4d55D6dE8e8d73232827Cd1e9b2F2dBb45bC80",
 };
 
 async function main() {
