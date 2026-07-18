@@ -52,8 +52,17 @@ async function main() {
   console.log("Tx:", tx.hash);
   await tx.wait();
 
-  const updated = await contract.rewardAmount();
+  // Public RPC endpoints load-balance across nodes; a read immediately after
+  // the tx can hit a node that hasn't caught up yet. Retry until it reflects.
+  let updated = await contract.rewardAmount();
+  for (let attempt = 0; attempt < 5 && updated !== newAmount; attempt++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    updated = await contract.rewardAmount();
+  }
   console.log("New reward:    ", hre.ethers.formatEther(updated), "cUSD");
+  if (updated !== newAmount) {
+    console.warn("Read still shows the old value — likely RPC lag; re-run check-contract.cjs in a minute.");
+  }
 }
 
 main().catch((error) => {
