@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 import type { Card } from "@/constants/cards";
 import { initGameState, type GameState, type TurnResult } from "@/lib/gameEngine";
-import { pushRecentDuelOutcome, readRecentDuels } from "@/lib/recentDuels";
+import { pushRecentDuelOutcome } from "@/lib/recentDuels";
 
 type ApiPublicState = {
   playerHp: number;
@@ -120,6 +120,7 @@ export function useGameState() {
 
       setDuelId(payload.duelId);
       setHand(payload.hand);
+      setAiHintType(payload.aiHintType ?? null); // server-generated hint for turn 1
       setGameState(initGameState());
       setUsedCardIds(new Set());
       window.dispatchEvent(new Event("player-state-update"));
@@ -135,16 +136,8 @@ export function useGameState() {
     }
   }, [address, signMessageAsync]);
 
-  useEffect(() => {
-    if (phase === "pick") {
-      // The AI's actual move selection is done server-side dynamically.
-      // To show a probabilistic hint to the player, we pick a category.
-      // The server will later decide whether to honor this hint or play something else.
-      const types = ["attack", "defend", "special"];
-      const randomType = types[Math.floor(Math.random() * types.length)] as string;
-      setAiHintType(randomType);
-    }
-  }, [phase]);
+  // aiHintType is set from the server response: start-duel seeds turn 1,
+  // ai-move returns nextAiHintType for subsequent turns. Nothing is client-generated.
 
   // Reconciles local state against the server's authoritative session after
   // an ambiguous failure — a client-side timeout doesn't mean the serverless
@@ -193,12 +186,6 @@ export function useGameState() {
       setPhase("resolve");
 
       try {
-        const recent = readRecentDuels(3).map(({ won, playerHp, aiHp }) => ({
-          won,
-          playerHp,
-          aiHp,
-        }));
-
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 25_000);
 
@@ -208,12 +195,9 @@ export function useGameState() {
           body: JSON.stringify({
             duelId,
             playerCard,
-            aiHintType: aiHintType ?? "special",
-            history: {
-              streak: parseInt(localStorage.getItem("duel_streak") || "0", 10),
-              totalWins: parseInt(localStorage.getItem("duel_total_wins") || "0", 10),
-            },
-            recentDuels: recent,
+            // Note: aiHintType, history, and recentDuels are intentionally
+            // omitted — the server ignores all of them. The hint is stored
+            // on the session; stats come from playerStore.
           }),
           signal: controller.signal,
         });
@@ -228,6 +212,8 @@ export function useGameState() {
 
         setAiCard(data.card as Card);
         setAiReasoning(String(data.reasoning ?? ""));
+        // Advance the hint to what the server rolled for the NEXT turn.
+        if (data.nextAiHintType) setAiHintType(data.nextAiHintType as string);
 
         await new Promise((r) => setTimeout(r, 1200));
 
@@ -406,7 +392,7 @@ export function useGameState() {
         turnInFlight.current = false;
       }
     },
-    [usedCardIds, duelId, aiHintType, resyncFromServer],
+    [usedCardIds, duelId, resyncFromServer],
   );
 
   return {

@@ -15,8 +15,10 @@ const hre = require("hardhat");
 
 // Canonical cUSD per network, used when CUSD_TOKEN_ADDRESS is unset.
 const DEFAULT_CUSD = {
-  celo: "0x765DE816845861e75A25fCA122bb6898B8B1282a",
-  alfajores: "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1",
+  celo:        "0x765DE816845861e75A25fCA122bb6898B8B1282a",
+  alfajores:   "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1",
+  // Confirmed via Celo registry (getAddressForString('StableToken')) on chainId 11142220.
+  celoSepolia: "0xEF4d55D6dE8e8d73232827Cd1e9b2F2dBb45bC80",
 };
 
 async function main() {
@@ -40,6 +42,16 @@ async function main() {
 
   const address = await contract.getAddress();
   console.log("\nDuelRewardsV2 deployed:", address);
+
+  // Public RPC nodes can take a few seconds to index fresh bytecode.
+  // Calling view functions immediately returns 0x (BAD_DATA). Wait briefly.
+  process.stdout.write("Waiting for RPC indexing");
+  for (let i = 0; i < 4; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    process.stdout.write(".");
+  }
+  console.log(" done");
+
   console.log("maxRewardAmount:", hre.ethers.formatEther(await contract.maxRewardAmount()), "cUSD");
   console.log("dailyClaimLimit:", (await contract.dailyClaimLimit()).toString());
 

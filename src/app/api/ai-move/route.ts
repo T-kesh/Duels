@@ -2,38 +2,25 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import type { Card } from "@/constants/cards";
-import { fetchCipherPick, buildCipherPrompt } from "@/lib/cipherAnthropic";
-import { STARTING_HP } from "@/constants/cards";
+import { STARTING_HP, getTieredPool } from "@/constants/cards";
+import { fetchCipherFlavor } from "@/lib/cipherAnthropic";
+import { pickCipherCard, randomHint } from "@/lib/cipherStrategy";
 import { resolveTurn, initGameState, type GameState } from "@/lib/gameEngine";
-import {
-  getAiDuelSession,
-  saveAiDuelSession,
-  type AiHintType,
-} from "@/lib/duelSessionStore";
+import { getAiDuelSession, saveAiDuelSession } from "@/lib/duelSessionStore";
 import { checkRateLimit } from "@/lib/rateLimit";
 import {
   grantPerfectDuelBonus,
   incrementWins,
   getTotalWins,
-  resetWinStreak,
   getWinStreak,
+  resetWinStreak,
 } from "@/lib/playerStore";
 import { DUEL_REWARDS_VERSION } from "@/constants/contracts";
 import { decideReward } from "@/lib/rewardTiers";
 
-type DuelHistoryEntry = {
-  won: boolean;
-  playerHp: number;
-  aiHp: number;
-};
-
 interface AiMovePayload {
-  duelId: string;
-  playerCard: Card;
-  aiHintType?: string | null;
-  history?: { streak?: number; totalWins?: number };
-  recentDuels?: DuelHistoryEntry[];
+  duelId?: string;
+  playerCard?: { id?: string };
 }
 
 function safeParseGameState(raw: string): GameState | null {
@@ -44,19 +31,13 @@ function safeParseGameState(raw: string): GameState | null {
   }
 }
 
-function parseHintType(raw: unknown): AiHintType {
-  if (raw === "attack" || raw === "defend" || raw === "special") return raw;
-  return "special";
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as AiMovePayload;
+    const duelId = body.duelId;
+    const playerCardId = body.playerCard?.id;
 
-    const { duelId, playerCard, history = {}, recentDuels = [] } = body;
-    const aiHintType = parseHintType(body.aiHintType);
-
-    if (!duelId || !playerCard?.id) {
+    if (!duelId || !playerCardId) {
       return NextResponse.json({ error: "missing_duel_session" }, { status: 400 });
     }
 
@@ -73,7 +54,7 @@ export async function POST(req: NextRequest) {
     // Resolve the authoritative card from the server-dealt hand. The client
     // only supplies an id; its damage/shield values are NEVER trusted, or a
     // player could inflate stats and forge a winning (claimable) transcript.
-    const authoritativeCard = session.hand.find((c) => c.id === playerCard.id);
+    const authoritativeCard = session.hand.find((c) => c.id === playerCardId);
     if (!authoritativeCard) {
       return NextResponse.json({ error: "illegal_card_for_session" }, { status: 400 });
     }
@@ -88,60 +69,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "duel_already_complete" }, { status: 400 });
     }
 
-    // Get player's current wins to scale difficulty and draw AI cards from correct tier pool
     const playerWins = await getTotalWins(session.playerAddress);
-    
-    // Build AI's available tiered card pool
-    const { getTieredPool } = await import("@/constants/cards");
+
+    // The hint the player saw this pick phase is server-authoritative: it was
+    // generated at start-duel (or after the previous turn) and stored on the
+    // session. The client can't steer CIPHER toward harmless card types by
+    // sending a hint of its choosing — anything in the request body is ignored.
+    const aiHintType = session.lastAiHintType ?? "special";
+
+    // CIPHER's card is picked by the server-side strategy engine — an LLM
+    // never chooses it, so prompt injection can only ever touch flavor text.
+    // Sharpness scales with the player's win count (easier for new players).
     const aiPool = getTieredPool(playerWins);
-
-    const prompt = buildCipherPrompt({
-      playerCard: authoritativeCard,
-      aiHp: gameState.aiHp,
+    const card = pickCipherCard({
+      pool: aiPool,
       playerHp: gameState.playerHp,
+      aiHp: gameState.aiHp,
       turn: gameState.turn,
-      aiHintType,
-      // Streak is client-supplied (cosmetic narrative only; no game outcome impact).
-      streak: Number(history.streak ?? 0),
-      // Use server-verified win count so the client cannot inflate CIPHER's difficulty.
-      totalWins: playerWins,
-      recentDuels,
+      hintType: aiHintType,
+      playerWins,
     });
-
-    const { card: rawCard, reasoning } = await fetchCipherPick(prompt);
-
-    // Enforce that AI card is selected from its tiered pool. Fallback if LLM output fails
-    let card = aiPool.find((c) => c.id === rawCard.id) || aiPool[0];
-
-    // Decouple LLM move from the hint: 70% probability to honor the hint.
-    // If we roll to NOT honor the hint and the LLM picked a card matching the hint category,
-    // we swap it to a different category.
-    const shouldHonorHint = Math.random() < 0.70;
-    if (!shouldHonorHint && card.type === aiHintType) {
-      // Find cards of other types in the AI pool
-      const nonHintCards = aiPool.filter((c) => c.type !== aiHintType);
-      if (nonHintCards.length > 0) {
-        card = nonHintCards[Math.floor(Math.random() * nonHintCards.length)];
-      }
-    } else if (shouldHonorHint && card.type !== aiHintType) {
-      // If we roll to honor the hint but LLM picked something else, force-swap to matching type
-      const matchingCards = aiPool.filter((c) => c.type === aiHintType);
-      if (matchingCards.length > 0) {
-        card = matchingCards[Math.floor(Math.random() * matchingCards.length)];
-      }
-    }
 
     const nextState = resolveTurn(gameState, authoritativeCard, card, aiHintType);
 
+    // Voice line only — server-derived context, clamped values, no client text.
+    const streakBefore = await getWinStreak(session.playerAddress);
+    const reasoning = await fetchCipherFlavor({
+      aiCard: card,
+      playerCard: authoritativeCard,
+      playerHp: nextState.playerHp,
+      aiHp: nextState.aiHp,
+      turn: gameState.turn,
+      streak: streakBefore,
+      totalWins: playerWins,
+    });
+
+    // Roll the hint the player will see on the NEXT pick phase.
+    const nextAiHintType = randomHint();
+
     session.transcript.push({ playerCard: authoritativeCard, aiCard: card, aiHintType });
     session.stateJson = JSON.stringify(nextState);
-    session.lastAiHintType = aiHintType;
+    session.lastAiHintType = nextAiHintType;
     await saveAiDuelSession(session);
 
     let perfectDuelBonus = false;
     if (nextState.isOver && nextState.playerWon) {
       await incrementWins(session.playerAddress);
-      
+
       if (DUEL_REWARDS_VERSION !== 1) {
         const streak = await getWinStreak(session.playerAddress);
         const reward = decideReward(nextState.playerHp, streak);
@@ -173,7 +147,7 @@ export async function POST(req: NextRequest) {
       perfectDuelBonus,
     };
 
-    return NextResponse.json({ card, reasoning, state });
+    return NextResponse.json({ card, reasoning, state, nextAiHintType });
   } catch (err: unknown) {
     console.error("/api/ai-move", err);
     const message = err instanceof Error ? err.message : "ai_move_failed";

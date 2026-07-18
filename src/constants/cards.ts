@@ -114,16 +114,67 @@ export function drawHand(wins: number = 0): Card[] {
 
 /**
  * Draw a hand using an injected RNG. `/api/start-duel` passes a crypto RNG.
- * Uses Fisher–Yates for a uniform, unbiased permutation — a `sort(() => rng - 0.5)`
- * comparator does NOT produce a uniform shuffle (and its behavior is engine-dependent).
+ *
+ * Tier composition rules (keeps the game balanced for veterans):
+ *   - Exactly 3 cards drawn.
+ *   - At most 1 tier-3 card (epic). Rolled at 30% when tier-3 cards are unlocked.
+ *   - At most 1 tier-2 card (rare). Rolled at 55% when tier-2 cards are unlocked.
+ *   - Remainder always tier-1 (common).
+ *
+ * This prevents the dominant "Surge III + Shield II" opener that made the game
+ * trivially easy for players with ≥15 wins. Fisher–Yates is used for every
+ * within-tier shuffle for an unbiased draw.
  */
 export function drawHandWithRng(wins: number, random: () => number): Card[] {
-  const pool = getTieredPool(wins);
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+  const hasTier3 = wins >= 15;
+  const hasTier2 = wins >= 5;
+
+  const tier1 = CARDS; // base set, always available
+  const tier2Cards = hasTier2
+    ? CARDS.map((c) => ({
+        ...c,
+        id: `${c.id}_t2`,
+        name: `${c.name} II`,
+        tier: 2 as const,
+        damage: Math.floor(c.damage * 1.3),
+        shield: Math.floor(c.shield * 1.3),
+      }))
+    : [];
+  const tier3Cards = hasTier3
+    ? CARDS.map((c) => ({
+        ...c,
+        id: `${c.id}_t3`,
+        name: `${c.name} III`,
+        tier: 3 as const,
+        damage: Math.floor(c.damage * 1.6),
+        shield: Math.floor(c.shield * 1.6),
+      }))
+    : [];
+
+  // Decide how many of each tier appear in the hand.
+  const includeT3 = hasTier3 && random() < 0.3; // 30% chance
+  const includeT2 = hasTier2 && random() < 0.55; // 55% chance
+  const t3Count = includeT3 ? 1 : 0;
+  const t2Count = includeT2 ? 1 : 0;
+  const t1Count = 3 - t3Count - t2Count; // always ≥ 1
+
+  function shuffle<T>(arr: T[]): T[] {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
   }
-  return pool.slice(0, 3);
+
+  const picked: Card[] = [
+    ...shuffle(tier1).slice(0, t1Count),
+    ...shuffle(tier2Cards).slice(0, t2Count),
+    ...shuffle(tier3Cards).slice(0, t3Count),
+  ];
+
+  // Final shuffle so tier order in the hand is random.
+  return shuffle(picked);
 }
 
 export const STARTING_HP = 100;

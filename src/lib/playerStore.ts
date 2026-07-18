@@ -141,16 +141,6 @@ export async function getPlayerState(address: string): Promise<PlayerState> {
   return state;
 }
 
-/** One-time seed from client localStorage wins (migration). */
-export async function seedWinsIfHigher(address: string, clientWins: number): Promise<void> {
-  if (!Number.isFinite(clientWins) || clientWins <= 0) return;
-  const stored = await loadStored(address);
-  if (clientWins > stored.totalWins) {
-    stored.totalWins = Math.floor(clientWins);
-    await saveStored(address, stored);
-  }
-}
-
 export async function consumeLife(address: string): Promise<{ ok: boolean; state: PlayerState }> {
   const stored = await loadStored(address);
   const state = applyRecharge(stored);
