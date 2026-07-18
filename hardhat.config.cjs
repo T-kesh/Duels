@@ -8,7 +8,10 @@ module.exports = {
   solidity: "0.8.20",
   networks: {
     alfajores: {
-      url: "https://alfajores-forno.celo-testnet.org",
+      // Original forno hostname (alfajores-forno.celo-testnet.org) is DNS-dead.
+      // Use celoSepolia below for testnet deploys, or supply your own RPC via
+      // ALFAJORES_RPC_URL in .env.local.
+      url: process.env.ALFAJORES_RPC_URL || "https://alfajores-forno.celo-testnet.org",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
       chainId: 44787,
     },
