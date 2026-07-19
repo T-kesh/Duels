@@ -41,8 +41,30 @@ describe("gameEngine", () => {
   it("applies lifesteal on Drain card play", () => {
     const state = initGameState();
     state.playerHp = 50; // set player HP low to measure healing
-    const next = resolveTurn(state, drain, strike); // drain(20) vs strike(8 shield) -> 12 damage. heals floor(12 * 0.5) = 6. strike(30) vs drain(0 shield) -> 30 damage.
-    expect(next.playerHp).toBe(50 - 30 + 6); // 26
+    // New Drain (25 dmg / 10 pierce / 0 shield) vs Strike (30 dmg / 8 shield):
+    //   - Strike shield is 8. Drain damage is 25.
+    //   - Total shield is 8. Since piercing (10) > shield (8), all shield is bypassed.
+    //   - Total damage dealt = 25.
+    //   - Lifesteal: floor(25 * 0.5) = 12.
+    //   - Opponent's Strike (30 dmg) vs Drain (0 shield) -> 30 damage.
+    //   - Player HP: 50 - 30 + 12 = 32.
+    const next = resolveTurn(state, drain, strike);
+    expect(next.playerHp).toBe(32);
+  });
+
+  it("pierces shields and heals on Drain vs Block matchup", () => {
+    const state = initGameState();
+    state.playerHp = 50;
+    // New Drain (25 dmg / 10 pierce / 0 shield) vs Block (0 dmg / 40 shield):
+    //   - Block shield is 40. Drain damage is 25.
+    //   - Base damage is max(0, 25 - 40) = 0.
+    //   - Pierce damage: min(10, 40) = 10.
+    //   - Total damage dealt = 10.
+    //   - Lifesteal: floor(10 * 0.5) = 5.
+    //   - Player HP: 50 - 0 (Block deals 0) + 5 = 55.
+    const next = resolveTurn(state, drain, block);
+    expect(next.playerHp).toBe(55);
+    expect(next.aiHp).toBe(90); // 100 - 10
   });
 
   it("previewDamage matches resolve output", () => {

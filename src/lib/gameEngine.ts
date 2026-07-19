@@ -61,10 +61,10 @@ export function resolveTurn(
     }
   }
 
-  const playerDamageDealt = calcDamageDealtUnified(playerCard.damage, aiCard.shield, aiBonusShield, isClutchTurn);
-  const aiDamageDealt = calcDamageDealtUnified(aiCard.damage, playerCard.shield, 0, isClutchTurn);
+  const playerDamageDealt = calcDamageDealtUnified(playerCard.damage, aiCard.shield, aiBonusShield, isClutchTurn, playerCard.piercing ?? 0);
+  const aiDamageDealt = calcDamageDealtUnified(aiCard.damage, playerCard.shield, 0, isClutchTurn, aiCard.piercing ?? 0);
 
-  // Lifesteal calculation (50% of damage actually dealt)
+  // Lifesteal calculation (50% of total damage dealt, including pierce)
   const playerHeal = playerCard.id.startsWith("drain") ? Math.floor(playerDamageDealt * 0.5) : 0;
   const aiHeal = aiCard.id.startsWith("drain") ? Math.floor(aiDamageDealt * 0.5) : 0;
 

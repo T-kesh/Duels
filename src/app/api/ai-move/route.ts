@@ -77,10 +77,11 @@ export async function POST(req: NextRequest) {
     // sending a hint of its choosing — anything in the request body is ignored.
     const aiHintType = session.lastAiHintType ?? "special";
 
-    // CIPHER's card is picked by the server-side strategy engine — an LLM
-    // never chooses it, so prompt injection can only ever touch flavor text.
-    // Sharpness scales with the player's win count (easier for new players).
-    const aiPool = getTieredPool(playerWins);
+    // CIPHER's card is picked from the leftover 3 cards (session.cipherPool)
+    // that the player did not pick from the dealt 6-card pool.
+    const aiPool = session.cipherPool && session.cipherPool.length > 0
+      ? session.cipherPool
+      : getTieredPool(playerWins);
     const card = pickCipherCard({
       pool: aiPool,
       playerHp: gameState.playerHp,

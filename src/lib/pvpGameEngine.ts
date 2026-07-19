@@ -68,10 +68,10 @@ export function applyPvpRound(state: PvpState, p1Card: Card, p2Card: Card): PvpS
   const round = state.round;
   const clutch = isClutchRound(round);
 
-  const p1DamageDealt = calcDamageDealtUnified(p1Card.damage, p2Card.shield, 0, clutch);
-  const p2DamageDealt = calcDamageDealtUnified(p2Card.damage, p1Card.shield, 0, clutch);
+  const p1DamageDealt = calcDamageDealtUnified(p1Card.damage, p2Card.shield, 0, clutch, p1Card.piercing ?? 0);
+  const p2DamageDealt = calcDamageDealtUnified(p2Card.damage, p1Card.shield, 0, clutch, p2Card.piercing ?? 0);
 
-  // Lifesteal calculation (50% of damage actually dealt)
+  // Lifesteal calculation (50% of total damage dealt, including pierce)
   const p1Heal = p1Card.id.startsWith("drain") ? Math.floor(p1DamageDealt * 0.5) : 0;
   const p2Heal = p2Card.id.startsWith("drain") ? Math.floor(p2DamageDealt * 0.5) : 0;
 

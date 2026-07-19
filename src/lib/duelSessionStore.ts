@@ -14,6 +14,10 @@ export interface DuelSession {
   /** Current HP + turn bookkeeping mirrored from gameEngine (JSON). */
   stateJson: string;
   expiresAtMs: number;
+  /** Initial 6 cards dealt at start-duel */
+  dealtPool?: Card[];
+  /** The 3 leftover cards for CIPHER */
+  cipherPool?: Card[];
   /** Hint shown to player this pick phase; validated on ai-move. */
   lastAiHintType?: AiHintType;
   /** Prevent double issuance of signatures for AI reward mode. */

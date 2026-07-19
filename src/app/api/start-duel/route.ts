@@ -61,16 +61,17 @@ export async function POST(req: NextRequest) {
 
     const duelId = crypto.randomUUID();
     const rng = () => crypto.randomInt(281474976710655) / 281474976710655;
-    const hand = drawHandWithRng(playerState.totalWins, rng);
+    const dealtPool = drawHandWithRng(playerState.totalWins, rng, 6);
 
     const session = await createAiDuelSession(duelId, playerAddress);
-    session.hand = hand;
+    session.dealtPool = dealtPool;
+    session.hand = [];
     session.stateJson = JSON.stringify(initGameState());
     // Server-generated hint for turn 1 — the client only displays it.
     session.lastAiHintType = randomHint();
     await saveAiDuelSession(session);
 
-    return NextResponse.json({ duelId, hand, aiHintType: session.lastAiHintType });
+    return NextResponse.json({ duelId, dealtPool, aiHintType: session.lastAiHintType });
   } catch (err: unknown) {
     console.error("/api/start-duel", err);
     const message = err instanceof Error ? err.message : "Could not deal hand";
