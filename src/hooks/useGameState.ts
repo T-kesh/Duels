@@ -43,8 +43,9 @@ export function useGameState() {
   const [visualHp, setVisualHp] = useState<{ player: number; ai: number } | null>(null);
   const [healFlash, setHealFlash] = useState<{ player: number; ai: number } | null>(null);
 
+  const [dealtPool, setDealtPool] = useState<Card[]>([]);
   const [gameState, setGameState] = useState<GameState>(initGameState);
-  const [phase, setPhase] = useState<"draw" | "pick" | "resolve" | "done">("draw");
+  const [phase, setPhase] = useState<"draw" | "lottery" | "pick" | "resolve" | "done">("draw");
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [aiCard, setAiCard] = useState<Card | null>(null);
   const [aiReasoning, setAiReasoning] = useState<string>("");
@@ -119,7 +120,8 @@ export function useGameState() {
       }
 
       setDuelId(payload.duelId);
-      setHand(payload.hand);
+      setDealtPool(payload.dealtPool ?? []);
+      setHand([]);
       setAiHintType(payload.aiHintType ?? null); // server-generated hint for turn 1
       setGameState(initGameState());
       setUsedCardIds(new Set());
@@ -395,9 +397,34 @@ export function useGameState() {
     [usedCardIds, duelId, resyncFromServer],
   );
 
+  const confirmHand = useCallback(async (pickedCardIds: string[]) => {
+    if (!duelId) return;
+    setIsLoading(true);
+    setTurnError(null);
+    try {
+      const res = await fetch("/api/confirm-hand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duelId, pickedCardIds }),
+      });
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload.error ?? `HTTP ${res.status}`);
+      }
+      setHand(payload.hand);
+      setPhase("pick");
+    } catch (e) {
+      console.error(e);
+      setTurnError(e instanceof Error ? e.message : "Could not lock hand. Try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [duelId]);
+
   return {
     duelId,
     hand,
+    dealtPool,
     startupError,
     dealingDeck,
     gameState,
@@ -416,5 +443,6 @@ export function useGameState() {
     healFlash,
     beginDuel,
     playTurn,
+    confirmHand,
   };
 }

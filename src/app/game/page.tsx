@@ -12,6 +12,7 @@ import { GameHeader } from "@/components/game/GameHeader";
 import { HealthBarsSection } from "@/components/game/HealthBarsSection";
 import { PlayerHand } from "@/components/game/PlayerHand";
 import { TurnHistory } from "@/components/game/TurnHistory";
+import { CardLottery } from "@/components/game/CardLottery";
 
 import { useGameState } from "@/hooks/useGameState";
 import { useEnergy } from "@/hooks/useEnergy";
@@ -24,6 +25,7 @@ export default function GamePage() {
   const {
     duelId,
     hand,
+    dealtPool,
     startupError,
     dealingDeck,
     gameState,
@@ -42,6 +44,7 @@ export default function GamePage() {
     healFlash,
     beginDuel,
     playTurn,
+    confirmHand,
   } = useGameState();
 
   const { lives, bonusLives, totalPlaysRemaining, nextRechargeAt, MAX_LIVES } = useEnergy();
@@ -144,7 +147,7 @@ export default function GamePage() {
             <GlowButton
               onClick={async () => {
                 const ok = await beginDuel();
-                if (ok) setPhase("pick");
+                if (ok) setPhase("lottery");
               }}
               disabled={dealingDeck || totalPlaysRemaining <= 0}
             >
@@ -176,6 +179,13 @@ export default function GamePage() {
               )}
             </div>
           </div>
+        )}
+        {phase === "lottery" && (
+          <CardLottery
+            dealtPool={dealtPool}
+            onConfirm={confirmHand}
+            isLoading={isLoading}
+          />
         )}
 
         {(phase === "pick" || phase === "resolve" || phase === "done") && (
