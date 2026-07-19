@@ -19,7 +19,7 @@ interface CardTileProps {
   selected?: boolean;
   disabled?: boolean;
   className?: string;
-  isRevealed?: boolean;
+  isFlipped?: boolean;
   /** When set, show damage preview vs a hinted defend (honest hint). */
   aiHintType?: string | null;
 }
@@ -31,8 +31,35 @@ export function CardTile({
   selected,
   disabled,
   className,
+  isFlipped,
   aiHintType,
 }: CardTileProps) {
+  if (isFlipped) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className={cn(
+          "relative flex-1 group perspective-1000 w-full aspect-[2/3]",
+          className
+        )}
+      >
+        <div className={cn(
+          "w-full h-full transition-all duration-500 preserve-3d rounded-xl flex flex-col items-center justify-center p-3 text-center border border-duel-gold/25 bg-gradient-to-br from-neutral-950 via-neutral-900 to-black shadow-[0_0_20px_rgba(252,196,25,0.05)]",
+          selected && "border-duel-gold scale-105 shadow-[0_0_25px_rgba(252,196,25,0.25)] animate-glow",
+          !disabled && "hover:border-duel-gold/50 hover:bg-neutral-900/80 hover:-translate-y-1 active:scale-95 active:duration-150 cursor-pointer"
+        )}>
+          {/* Cosmic matrix design */}
+          <div className="absolute inset-1.5 border border-white/5 rounded-lg pointer-events-none flex flex-col items-center justify-center">
+            <div className="w-10 h-10 rounded-full border border-duel-gold/15 flex items-center justify-center bg-duel-gold/5 animate-pulse">
+              <span className="text-duel-gold/75 text-xs font-mono font-bold tracking-widest">CIPHER</span>
+            </div>
+          </div>
+        </div>
+      </button>
+    );
+  }
+
   // Estimate CIPHER's effective shield based on the hinted card type.
   // Uses the average shield of base-tier cards of that type from the real
   // pool, plus HINT_SHIELD_BONUS only when the hint type would be honored.
@@ -85,6 +112,11 @@ export function CardTile({
           {card.shield > 0 && (
             <span className="text-[8px] font-bold text-sky-400 bg-sky-400/10 px-1.5 py-0.5 rounded-md border border-sky-400/20">
               +{card.shield} DEF
+            </span>
+          )}
+          {card.piercing && card.piercing > 0 && (
+            <span className="text-[8px] font-bold text-purple-400 bg-purple-400/10 px-1.5 py-0.5 rounded-md border border-purple-400/20">
+              ⚡ {card.piercing} PRC
             </span>
           )}
           {aiHintType && card.damage > 0 && (
