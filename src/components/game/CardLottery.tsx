@@ -46,7 +46,7 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
 
     if (step === "shuffle") {
       let shuffleCount = 0;
-      const maxShuffles = 6;
+      const maxShuffles = 8;
       const interval = setInterval(() => {
         setVisiblePool((prev) => {
           // Unbiased shuffle of positions
@@ -63,7 +63,7 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
           clearInterval(interval);
           setStep("pick");
         }
-      }, 250);
+      }, 225); // 8 shuffles * 225ms = 1.8s (exactly matching globals.css animation cycle)
 
       return () => clearInterval(interval);
     }
@@ -138,11 +138,7 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
           return (
             <div
               key={card.id}
-              className="transition-all duration-300 transform"
-              style={{
-                // Add a playful wiggle during shuffle step
-                transform: step === "shuffle" ? `rotate(${(i % 2 === 0 ? 1 : -1) * 3}deg) scale(0.97)` : "none",
-              }}
+              className={`transition-all duration-300 transform ${step === "shuffle" ? `animate-shuffle-${i}` : ""}`}
             >
               <CardTile
                 card={card}
