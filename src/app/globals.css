@@ -214,3 +214,43 @@ code, .font-mono {
   transition: all 0.3s ease;
 }
 
+/* Card Shuffle Animations */
+@keyframes shuffle-center-col-0-row-0 {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  20%, 75% { transform: translate(105%, 55%) rotate(8deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes shuffle-center-col-1-row-0 {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  20%, 75% { transform: translate(0%, 55%) rotate(-8deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes shuffle-center-col-2-row-0 {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  20%, 75% { transform: translate(-105%, 55%) rotate(5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes shuffle-center-col-0-row-1 {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  20%, 75% { transform: translate(105%, -55%) rotate(-5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes shuffle-center-col-1-row-1 {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  20%, 75% { transform: translate(0%, -55%) rotate(7deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+@keyframes shuffle-center-col-2-row-1 {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  20%, 75% { transform: translate(-105%, -55%) rotate(-7deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.animate-shuffle-0 { animation: shuffle-center-col-0-row-0 1.8s cubic-bezier(0.77, 0, 0.175, 1) infinite; }
+.animate-shuffle-1 { animation: shuffle-center-col-1-row-0 1.8s cubic-bezier(0.77, 0, 0.175, 1) infinite; }
+.animate-shuffle-2 { animation: shuffle-center-col-2-row-0 1.8s cubic-bezier(0.77, 0, 0.175, 1) infinite; }
+.animate-shuffle-3 { animation: shuffle-center-col-0-row-1 1.8s cubic-bezier(0.77, 0, 0.175, 1) infinite; }
+.animate-shuffle-4 { animation: shuffle-center-col-1-row-1 1.8s cubic-bezier(0.77, 0, 0.175, 1) infinite; }
+.animate-shuffle-5 { animation: shuffle-center-col-2-row-1 1.8s cubic-bezier(0.77, 0, 0.175, 1) infinite; }
+
+
