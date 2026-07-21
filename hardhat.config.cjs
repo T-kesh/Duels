@@ -30,16 +30,14 @@ module.exports = {
     enabled: true,
   },
   etherscan: {
-    apiKey: {
-      celo: "C6UQ1K69527X43D1A5W3H2Y3K5Z6X7C8", // Standard Celo key if needed, but often not required for public Verifiers
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY || "C6UQ1K69527X43D1A5W3H2Y3K5Z6X7C8",
     customChains: [
       {
         network: "celo",
         chainId: 42220,
         urls: {
           apiURL: "https://api.etherscan.io/v2/api",
-          browserURL: "https://celoscan.io/",
+          browserURL: "https://celoscan.io",
         },
       },
       {
