@@ -117,7 +117,20 @@ export async function POST(req: NextRequest) {
     // does not permanently burn the tx hash in Redis.
     const rpc = clientRpc();
 
-    const receipt = await rpc.getTransactionReceipt({ hash }).catch(() => undefined);
+    // Use waitForTransactionReceipt to give the network/RPC node time to mine
+    // and index the transaction receipt before evaluating logs.
+    const receipt = await rpc
+      .waitForTransactionReceipt({ hash, timeout: 20_000 })
+      .catch(async () => {
+        // Fallback retry loop if viem's event watcher timed out
+        for (let i = 0; i < 3; i++) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const retryReceipt = await rpc.getTransactionReceipt({ hash }).catch(() => undefined);
+          if (retryReceipt) return retryReceipt;
+        }
+        return undefined;
+      });
+
     if (!receipt || receipt.status !== "success") {
       return NextResponse.json({ error: "transaction_not_found_or_failed" }, { status: 400 });
     }
