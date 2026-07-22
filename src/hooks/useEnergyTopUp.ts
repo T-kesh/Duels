@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useAccount, useWalletClient } from "wagmi";
+import { useAccount, useWalletClient, usePublicClient } from "wagmi";
 import { erc20Abi } from "viem";
 
 export function useEnergyTopUp() {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
   const [status, setStatus] = useState<"idle" | "pending" | "verifying" | "done" | "error">(
     "idle",
   );
@@ -41,6 +42,14 @@ export function useEnergyTopUp() {
       });
 
       setStatus("verifying");
+
+      // Wait for block inclusion on the client side before triggering backend verification
+      if (publicClient) {
+        await publicClient
+          .waitForTransactionReceipt({ hash: txHash, timeout: 25_000 })
+          .catch(() => null);
+      }
+
       const res = await fetch("/api/topup-energy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,19 +70,23 @@ export function useEnergyTopUp() {
       
       const errObj = e instanceof Error ? e : null;
       let msg = errObj?.message || String(e);
-      if (msg.includes("User rejected")) {
+      if (msg.includes("User rejected") || msg.includes("user rejected") || msg.includes("UserDenied")) {
         msg = "Transaction rejected by user.";
       } else if (msg.includes("transaction_not_found_or_failed")) {
-        msg = "Transaction verify failed on RPC server. Check your network configuration.";
+        msg = "Transaction is taking longer to confirm on Celo. Please wait a moment and try again.";
+      } else if (msg.includes("transfer_mismatch_or_insufficient_amount")) {
+        msg = "Top-up failed: Transferred amount or recipient did not match treasury configuration.";
+      } else if (msg.includes("tx_already_consumed")) {
+        msg = "This top-up transaction was already credited.";
       }
       setErrorMessage(msg);
     } finally {
       setTimeout(() => {
         setStatus("idle");
         setErrorMessage(null);
-      }, 5000);
+      }, 6000);
     }
-  }, [address, walletClient, treasury, token, weiStr]);
+  }, [address, walletClient, publicClient, treasury, token, weiStr]);
 
   return {
     enabled,
