@@ -44,16 +44,11 @@ export function useClaimReward() {
     setClaimStatus("claiming");
     setClaimError(null);
 
-    // Give address a short grace window instead of bailing out with no feedback
-    let addr = addressRef.current;
-    for (let attempt = 0; attempt < 10 && !addr; attempt++) {
-      await new Promise((r) => setTimeout(r, 300));
-      addr = addressRef.current;
-    }
+    const addr = addressRef.current;
     if (!addr) {
-      console.error("claimReward: wallet address never became available");
+      console.error("claimReward: wallet address is not available");
       setClaimStatus("failed");
-      setClaimError("Wallet address is not available.");
+      setClaimError("Wallet address is not available. Please connect your wallet.");
       return;
     }
 
