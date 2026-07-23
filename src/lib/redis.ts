@@ -25,7 +25,11 @@ export async function safeRedisOp<T>(op: () => Promise<T>): Promise<T | null> {
   try {
     return await op();
   } catch (err) {
-    console.warn("[redis] operation failed, falling back to memory:", err);
+    if (process.env.NODE_ENV === "production") {
+      console.error("[redis] CRITICAL: Operation failed in production, falling back to isolated per-instance memory store:", err);
+    } else {
+      console.warn("[redis] operation failed, falling back to memory:", err);
+    }
     return null;
   }
 }
