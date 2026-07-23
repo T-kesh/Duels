@@ -1,9 +1,10 @@
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
 
-import { initGameState, resolveTurn, type GameState, type AiHintType } from "@/lib/gameEngine";
+import { type GameState, type AiHintType } from "@/lib/gameEngine";
 import { getAiDuelSession, saveAiDuelSession } from "@/lib/duelSessionStore";
 import { parsePlayerAddress } from "@/lib/addresses";
 import { checkRateLimit } from "@/lib/rateLimit";
