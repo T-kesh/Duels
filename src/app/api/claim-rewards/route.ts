@@ -1,4 +1,5 @@
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
       flavor = sessionRecord.rewardDecision.flavor;
     } else {
       const streak = await getWinStreak(playerAddress);
-      const reward = decideReward(replay.playerHp, streak);
+      const reward = decideReward(replay.playerHp, streak, 100, duelId);
       amountWei = reward.amountWei;
       tier = reward.tier;
       flavor = reward.flavor;

@@ -1,4 +1,5 @@
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "invalid_player_address" }, { status: 400 });
     }
 
-    const player = getAddress(playerRaw as Hex);
+    const player = getAddress(normalizedPlayer);
     const treasuryEnv =
       process.env.TOPUP_TREASURY ??
       process.env.NEXT_PUBLIC_TOPUP_TREASURY ??

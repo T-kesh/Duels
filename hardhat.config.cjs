@@ -30,7 +30,7 @@ module.exports = {
     enabled: true,
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY || "C6UQ1K69527X43D1A5W3H2Y3K5Z6X7C8",
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
     customChains: [
       {
         network: "celo",

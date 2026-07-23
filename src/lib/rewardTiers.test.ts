@@ -66,6 +66,14 @@ describe("decideReward", () => {
     // 500 rolls at 10% chance — P(miss all) ≈ 1e-23
     expect(sawGenerous).toBe(true);
   });
+
+  it("produces identical results when provided with the same seed", () => {
+    const r1 = decideReward(85, 3, 100, "duel_12345");
+    const r2 = decideReward(85, 3, 100, "duel_12345");
+    expect(r1.tier).toBe(r2.tier);
+    expect(r1.amountWei).toBe(r2.amountWei);
+    expect(r1.flavor).toBe(r2.flavor);
+  });
 });
 
 describe("formatRewardCusd", () => {

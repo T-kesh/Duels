@@ -55,7 +55,8 @@ Opponent's current win streak: ${clampInt(ctx.streak, 0, 999)}. Lifetime wins: $
 Reply with ONE arrogant in-character sentence (max 18 words) reacting to this exchange. No quotes, no JSON, no preamble.`;
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const baseUrl = (process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com").replace(/\/+$/, "");
+    const response = await fetch(`${baseUrl}/v1/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

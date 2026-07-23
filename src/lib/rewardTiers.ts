@@ -64,11 +64,25 @@ const FLAVOR: Record<RewardTier, string[]> = {
   ],
 };
 
-function randomInt(minInclusive: number, maxInclusive: number): number {
+function seedRandomInt(seed: string, salt: string, minInclusive: number, maxInclusive: number): number {
+  const hash = crypto.createHash("sha256").update(`${seed}:${salt}`).digest();
+  const num = hash.readUInt32BE(0);
+  const range = maxInclusive - minInclusive + 1;
+  return minInclusive + (num % range);
+}
+
+function randomInt(minInclusive: number, maxInclusive: number, seed?: string, salt = "amount"): number {
+  if (seed) {
+    return seedRandomInt(seed, salt, minInclusive, maxInclusive);
+  }
   return crypto.randomInt(minInclusive, maxInclusive + 1);
 }
 
-function pick<T>(arr: T[]): T {
+function pick<T>(arr: T[], seed?: string, salt = "flavor"): T {
+  if (seed) {
+    const idx = seedRandomInt(seed, salt, 0, arr.length - 1);
+    return arr[idx];
+  }
   return arr[crypto.randomInt(arr.length)];
 }
 
@@ -82,11 +96,13 @@ function milliCusdToWei(milli: number): bigint {
  * @param finalPlayerHp  player HP at duel end (server-replayed, not client)
  * @param streak         server-known consecutive wins including this one
  * @param startingHp     STARTING_HP constant (default 100)
+ * @param seed           optional seed (e.g. duelId) for deterministic decision/recalculation
  */
 export function decideReward(
   finalPlayerHp: number,
   streak: number,
   startingHp = 100,
+  seed?: string,
 ): RewardDecision {
   const perfectDuel = finalPlayerHp >= Math.floor(startingHp * 0.8);
   const hotStreak = streak >= 3;
@@ -96,16 +112,17 @@ export function decideReward(
     tier = "worthy";
     // Grace roll: only quality play can be elevated to generous, so the line
     // "CIPHER is feeling generous" always lands on a genuinely strong duel.
-    // crypto.randomInt(10000) gives a uniform integer in [0, 9999]; compare
-    // against the chance scaled to basis-points so floating-point is exact.
     const basisPoints = Math.round(GENEROUS_CHANCE * 10000);
-    if (crypto.randomInt(10000) < basisPoints) tier = "generous";
+    const roll = seed
+      ? seedRandomInt(seed, "tier", 0, 9999)
+      : crypto.randomInt(10000);
+    if (roll < basisPoints) tier = "generous";
   }
 
   const { min, max } = TIER_BOUNDS[tier];
-  const amountWei = milliCusdToWei(randomInt(min, max));
+  const amountWei = milliCusdToWei(randomInt(min, max, seed, "amount"));
 
-  return { tier, amountWei, flavor: pick(FLAVOR[tier]) };
+  return { tier, amountWei, flavor: pick(FLAVOR[tier], seed, "flavor") };
 }
 
 /** Formats a wei amount as a short cUSD string, e.g. "0.008". */
