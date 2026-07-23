@@ -41,8 +41,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "duel_not_complete" }, { status: 400 });
     }
 
-    const requester = parsePlayerAddress(req.headers.get("x-player-address"));
-    const rateKey = requester ?? session.player1;
+    const requesterRaw = req.headers.get("x-player-address");
+    const requester = parsePlayerAddress(requesterRaw);
+    const isParticipant =
+      requester &&
+      (requester.toLowerCase() === session.player1.toLowerCase() ||
+        (session.player2 && requester.toLowerCase() === session.player2.toLowerCase()));
+    const rateKey = isParticipant ? requester : session.player1;
     const limit = await checkRateLimit("pvp-claim", rateKey);
     if (!limit.allowed) {
       return NextResponse.json({ error: "rate_limit_exceeded" }, { status: 429 });
