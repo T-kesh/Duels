@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 import type { Card } from "@/constants/cards";
 import { initGameState, type GameState, type TurnResult } from "@/lib/gameEngine";
@@ -53,6 +53,14 @@ export function useGameState() {
   const [usedCardIds, setUsedCardIds] = useState<Set<string>>(new Set());
   const [aiHintType, setAiHintType] = useState<string | null>(null);
   const [turnError, setTurnError] = useState<string | null>(null);
+
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const turnInFlight = useRef(false);
   const gameStateRef = useRef(gameState);
@@ -310,6 +318,7 @@ export function useGameState() {
           setPhase("done");
         } else {
           setTimeout(() => {
+            if (!mountedRef.current) return;
             setAiCard(null);
             setSelectedCard(null);
             setAiReasoning("");
@@ -362,7 +371,10 @@ export function useGameState() {
             } else {
               setTurnError("Your last move had already gone through — synced up.");
               setPhase("pick");
-              setTimeout(() => setTurnError(null), 3000);
+              setTimeout(() => {
+                if (!mountedRef.current) return;
+                setTurnError(null);
+              }, 3000);
             }
             return;
           }
@@ -386,6 +398,7 @@ export function useGameState() {
         setAiReasoning("");
 
         setTimeout(() => {
+          if (!mountedRef.current) return;
           setSelectedCard(null);
           setPhase("pick");
         }, 600);
