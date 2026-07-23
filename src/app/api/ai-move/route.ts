@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
 
       if (DUEL_REWARDS_VERSION !== 1) {
         const streak = await getWinStreak(session.playerAddress);
-        const reward = decideReward(nextState.playerHp, streak);
+        const reward = decideReward(nextState.playerHp, streak, STARTING_HP, session.duelId);
         session.rewardDecision = {
           tier: reward.tier,
           amountWei: reward.amountWei.toString(),
