@@ -91,7 +91,8 @@ export function VictoryCelebration({ won }: VictoryCelebrationProps) {
     const updateAndDraw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      particles.forEach((p, idx) => {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
         p.vy += 0.18;
@@ -100,8 +101,8 @@ export function VictoryCelebration({ won }: VictoryCelebrationProps) {
         p.rotation += p.rotationSpeed;
 
         if (p.alpha <= 0) {
-          particles.splice(idx, 1);
-          return;
+          particles.splice(i, 1);
+          continue;
         }
 
         ctx.save();
@@ -111,7 +112,7 @@ export function VictoryCelebration({ won }: VictoryCelebrationProps) {
         ctx.fillStyle = p.color;
         ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
         ctx.restore();
-      });
+      }
 
       if (particles.length > 0) {
         animationFrameId = requestAnimationFrame(updateAndDraw);
