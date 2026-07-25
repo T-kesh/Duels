@@ -9,6 +9,7 @@ import {
   DUEL_REWARDS_V2_ABI,
   DUEL_REWARDS_VERSION,
 } from "@/constants/contracts";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 export interface ClaimedReward {
   /** Formatted cUSD amount, e.g. "0.008" (V2 only; null on V1). */
@@ -109,32 +110,7 @@ export function useClaimReward() {
     } catch (err: unknown) {
       console.error("Claim failed:", err);
       setClaimStatus("failed");
-
-      // Extract detailed failure reasons
-      const errObj = err instanceof Error ? err : null;
-      
-      // Safe extraction of cause without explicit 'any' cast
-      let causeMessage: string | null = null;
-      if (errObj && "cause" in errObj && errObj.cause && typeof errObj.cause === "object" && "message" in errObj.cause) {
-        causeMessage = String((errObj.cause as { message: unknown }).message);
-      }
-
-      let message = errObj?.message || String(err);
-      if (causeMessage) {
-        message = causeMessage;
-      }
-
-      if (message.includes("User rejected the request")) {
-        message = "Transaction rejected by user.";
-      } else if (message.includes("session_expired")) {
-        message = "Reward claim window has expired (45-minute limit per duel session).";
-      } else if (message.includes("PoolEmpty") || message.includes("0xe5ea1016")) {
-        message = "Contract reward pool is empty. Please contact support.";
-      } else if (message.includes("DailyLimitReached") || message.includes("0xc4506c04")) {
-        message = "Daily claim limit reached.";
-      }
-
-      setClaimError(message);
+      setClaimError(getFriendlyErrorMessage(err));
     }
   }, [chainId, writeContractAsync, switchChainAsync]);
 

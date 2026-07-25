@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 import type { Card } from "@/constants/cards";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 /** Mirror of the server `PvpPublicView` (kept local to avoid importing server-only modules). */
 export interface PvpView {
@@ -35,7 +36,7 @@ type PvpPhase = "idle" | "authenticating" | "playing" | "done";
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
 function errMessage(e: unknown): string {
-  return e instanceof Error ? e.message : "pvp_error";
+  return getFriendlyErrorMessage(e);
 }
 
 export function usePvpGame(duelId: string | null) {

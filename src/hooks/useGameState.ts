@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAccount, useSignMessage } from "wagmi";
 import type { Card } from "@/constants/cards";
-import { initGameState, type GameState, type TurnResult } from "@/lib/gameEngine";
+import { initGameState, type GameState } from "@/lib/gameEngine";
 import { pushRecentDuelOutcome } from "@/lib/recentDuels";
 import {
   soundDuelStart,
@@ -17,15 +17,8 @@ import {
   soundPerfectDuel,
 } from "@/lib/sounds";
 
-type ApiPublicState = {
-  playerHp: number;
-  aiHp: number;
-  turn: number;
-  isOver: boolean;
-  playerWon: boolean | null;
-  lastTurn: TurnResult | null;
-  perfectDuelBonus?: boolean;
-};
+import type { ApiPublicState } from "@/types/api";
+import { getFriendlyErrorMessage } from "@/lib/errors";
 
 function mergeFromApi(prev: GameState, patch: ApiPublicState): GameState {
   const turns = patch.lastTurn ? [...prev.turns, patch.lastTurn] : prev.turns;
@@ -149,9 +142,7 @@ export function useGameState() {
       return true;
     } catch (e) {
       console.error(e);
-      setStartupError(
-        e instanceof Error ? e.message : "Could not securely deal a duel. Try again.",
-      );
+      setStartupError(getFriendlyErrorMessage(e));
       return false;
     } finally {
       setDealingDeck(false);
