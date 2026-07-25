@@ -18,10 +18,29 @@ function fallbackLine(): string {
 }
 
 /** Clamp a client-adjacent number into a sane range before it nears a prompt. */
-function clampInt(raw: unknown, min: number, max: number): number {
+export function clampInt(raw: unknown, min: number, max: number): number {
   const n = Math.round(Number(raw));
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, n));
+}
+
+/**
+ * Sanitize text inputs before prompt interpolation to neutralize prompt injection vectors.
+ * Strips control characters, newlines, system tags ([INST], <system>, etc.), and caps length.
+ */
+export function sanitizePromptString(raw: unknown, maxLen = 50): string {
+  if (typeof raw !== "string") return "Card";
+  const cleaned = raw
+    // Strip control characters & newlines
+    .replace(/[\x00-\x1F\x7F-\x9F\r\n\t]/g, " ")
+    // Neutralize prompt instruction tags & special delimiters
+    .replace(/\[\/?INST\]|<[^>]*>|Human:|Assistant:|System:/gi, "")
+    // Collapse whitespace
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) return "Card";
+  return cleaned.length > maxLen ? cleaned.slice(0, maxLen) : cleaned;
 }
 
 export interface CipherFlavorContext {
@@ -39,17 +58,19 @@ export interface CipherFlavorContext {
 
 /**
  * Ask the LLM for CIPHER's one-line voice. Everything in the prompt is
- * server-derived and numerically clamped, and the output cannot influence
- * game state — worst case a prompt-injection attempt changes a taunt.
+ * server-derived, sanitized, and numerically clamped.
  */
 export async function fetchCipherFlavor(ctx: CipherFlavorContext): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return fallbackLine();
 
+  const playerCardName = sanitizePromptString(ctx.playerCard?.name);
+  const aiCardName = sanitizePromptString(ctx.aiCard?.name);
+
   const prompt = `You are CIPHER, an unforgiving and slightly arrogant AI duelist in a 3-turn card game.
 
 Turn ${clampInt(ctx.turn, 1, 3)}/3. Your HP: ${clampInt(ctx.aiHp, 0, 100)}/100. Opponent HP: ${clampInt(ctx.playerHp, 0, 100)}/100.
-Opponent played ${ctx.playerCard.name}. You are playing ${ctx.aiCard.name}.
+Opponent played ${playerCardName}. You are playing ${aiCardName}.
 Opponent's current win streak: ${clampInt(ctx.streak, 0, 999)}. Lifetime wins: ${clampInt(ctx.totalWins, 0, 99999)}.
 
 Reply with ONE arrogant in-character sentence (max 18 words) reacting to this exchange. No quotes, no JSON, no preamble.`;
