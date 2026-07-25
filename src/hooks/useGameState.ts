@@ -5,6 +5,17 @@ import { useAccount, useSignMessage } from "wagmi";
 import type { Card } from "@/constants/cards";
 import { initGameState, type GameState, type TurnResult } from "@/lib/gameEngine";
 import { pushRecentDuelOutcome } from "@/lib/recentDuels";
+import {
+  soundDuelStart,
+  soundCardSelect,
+  soundCardClash,
+  soundPlayerDamage,
+  soundAiDamage,
+  soundHeal,
+  soundVictory,
+  soundDefeat,
+  soundPerfectDuel,
+} from "@/lib/sounds";
 
 type ApiPublicState = {
   playerHp: number;
@@ -133,6 +144,7 @@ export function useGameState() {
       setAiHintType(payload.aiHintType ?? null); // server-generated hint for turn 1
       setGameState(initGameState());
       setUsedCardIds(new Set());
+      soundDuelStart();
       window.dispatchEvent(new Event("player-state-update"));
       return true;
     } catch (e) {
@@ -194,6 +206,7 @@ export function useGameState() {
       setAiReasoning("");
       setTurnError(null);
       setPhase("resolve");
+      soundCardSelect();
 
       try {
         const controller = new AbortController();
@@ -225,7 +238,9 @@ export function useGameState() {
         // Advance the hint to what the server rolled for the NEXT turn.
         if (data.nextAiHintType) setAiHintType(data.nextAiHintType as string);
 
-        await new Promise((r) => setTimeout(r, 1200));
+        await new Promise((r) => setTimeout(r, 550));
+        soundCardClash();
+        await new Promise((r) => setTimeout(r, 650));
 
         const patch = data.state as ApiPublicState;
         
@@ -255,6 +270,8 @@ export function useGameState() {
             player: playerDamage,
             ai: aiDamage,
           });
+          if (playerDamage > 0) soundPlayerDamage();
+          if (aiDamage > 0) soundAiDamage();
         }
 
         // Wait for damage flash to play out
@@ -263,6 +280,7 @@ export function useGameState() {
 
         // Stage 2: If there's lifesteal, trigger heal flash and transition to final HP values
         if (playerHeal > 0 || aiHeal > 0) {
+          soundHeal();
           setHealFlash({
             player: playerHeal,
             ai: aiHeal,
@@ -295,6 +313,7 @@ export function useGameState() {
 
         if (nextSnap.isOver) {
           if (nextSnap.playerWon) {
+            soundVictory();
             const streak = parseInt(localStorage.getItem("duel_streak") ?? "0", 10) + 1;
             localStorage.setItem("duel_streak", streak.toString());
 
@@ -305,6 +324,7 @@ export function useGameState() {
             localStorage.setItem("duel_total_wins", wins.toString());
 
             if (patch.perfectDuelBonus) {
+              soundPerfectDuel();
               setPerfectDuelToast(true);
               setTimeout(() => setPerfectDuelToast(false), 4000);
               window.dispatchEvent(new Event("player-state-update"));
@@ -312,6 +332,7 @@ export function useGameState() {
 
             onWin?.(duelId);
           } else {
+            soundDefeat();
             localStorage.setItem("duel_streak", "0");
           }
 
