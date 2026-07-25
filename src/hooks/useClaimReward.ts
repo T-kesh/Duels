@@ -126,6 +126,8 @@ export function useClaimReward() {
 
       if (message.includes("User rejected the request")) {
         message = "Transaction rejected by user.";
+      } else if (message.includes("session_expired")) {
+        message = "Reward claim window has expired (45-minute limit per duel session).";
       } else if (message.includes("PoolEmpty") || message.includes("0xe5ea1016")) {
         message = "Contract reward pool is empty. Please contact support.";
       } else if (message.includes("DailyLimitReached") || message.includes("0xc4506c04")) {

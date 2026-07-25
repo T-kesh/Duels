@@ -68,6 +68,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "player_address_mismatch" }, { status: 403 });
     }
 
+    // Reject claim if duel session has expired
+    if (sessionRecord.expiresAtMs && Date.now() > sessionRecord.expiresAtMs) {
+      return NextResponse.json({ error: "session_expired" }, { status: 410 });
+    }
+
     // Check dupe-signature BEFORE consuming a rate limit slot — retrying
     // a claimed session should never burn the player's rate limit budget.
     if (sessionRecord.rewardSignatureIssued) {
@@ -76,6 +81,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({
             nonce: sessionRecord.rewardNonce,
             signature: sessionRecord.rewardSignature,
+            expiresAtMs: sessionRecord.expiresAtMs,
           });
         } else {
           const dec = sessionRecord.rewardDecision;
@@ -87,6 +93,7 @@ export async function POST(req: NextRequest) {
             amountCusd: dec ? formatRewardCusd(amountWei) : "0.000",
             tier: dec?.tier ?? "base",
             flavor: dec?.flavor ?? "",
+            expiresAtMs: sessionRecord.expiresAtMs,
           });
         }
       }
@@ -208,6 +215,7 @@ export async function POST(req: NextRequest) {
       amountCusd: formatRewardCusd(amountWei),
       tier,
       flavor,
+      expiresAtMs: sessionRecord.expiresAtMs,
     });
   } catch (err) {
     console.error("claim-reward error:", err);
