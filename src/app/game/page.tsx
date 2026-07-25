@@ -107,6 +107,7 @@ export default function GamePage() {
         damageFlash={lastDamageFlash}
         healFlash={healFlash}
         clutchTurn={clutchTurn}
+        isResolving={phase === "resolve"}
       />
 
       {perfectDuelToast && (
@@ -193,7 +194,10 @@ export default function GamePage() {
             <TurnHistory turns={gameState.turns} visible={phase === "pick"} />
 
             {(phase === "resolve" || phase === "done") && selectedCard && (
-              <div className="flex flex-col items-center gap-6 animate-slide-up">
+              <div className="flex flex-col items-center gap-6 animate-slide-up relative">
+                {aiCard && (
+                  <div className="impact-burst animate-impact-burst [animation-delay:550ms]" />
+                )}
                 <div
                   className={cn(
                     "flex justify-around w-full items-center gap-4",
