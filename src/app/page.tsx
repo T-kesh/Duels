@@ -4,9 +4,11 @@ import { useState, useEffect } from "react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { celo } from "wagmi/chains";
 import { useRouter } from "next/navigation";
-import { Flame, Swords, Trophy, Users } from "lucide-react";
+import { Swords, Trophy, Users, BookOpen } from "lucide-react";
 import { ConnectButton } from "@/components/connect-button";
 import { GlowButton } from "@/components/ui/GlowButton";
+
+import { StreakMilestone } from "@/components/ui/StreakMilestone";
 
 export default function Home() {
   const { isConnected } = useAccount();
@@ -43,13 +45,10 @@ export default function Home() {
           AI Card Battle • Earn USDm
         </p>
 
-        {/* Win Streak Badge */}
+        {/* Win Streak Badge / Milestone */}
         {streak > 0 && (
-          <div className="inline-flex items-center gap-2 px-4 py-2 glass border-duel-gold/20 rounded-full mb-10 animate-count-pop [animation-delay:350ms]">
-            <Flame className="w-4 h-4 text-duel-gold animate-pulse" />
-            <span className="text-xs font-bold text-duel-gold tracking-widest uppercase">
-              {streak} Win Streak
-            </span>
+          <div className="mb-10 animate-count-pop [animation-delay:350ms]">
+            <StreakMilestone streak={streak} />
           </div>
         )}
 
@@ -104,20 +103,31 @@ export default function Home() {
                 Enter Arena
               </GlowButton>
 
-              <button
-                onClick={() => router.push("/leaderboard")}
-                className="inline-flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.3em] py-2"
-              >
-                <Trophy className="w-3.5 h-3.5 text-duel-gold/70" />
-                Hall of Fame
-              </button>
-              <button
-                onClick={() => router.push("/pvp")}
-                className="inline-flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.3em] py-2"
-              >
-                <Users className="w-3.5 h-3.5 text-duel-gold/70" />
-                Human vs Human
-              </button>
+              <div className="flex justify-center gap-4 w-full pt-2">
+                <button
+                  onClick={() => router.push("/cards")}
+                  className="inline-flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.2em] py-2"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-duel-gold/70" />
+                  Arsenal
+                </button>
+                <span className="text-muted-foreground/30 py-2">•</span>
+                <button
+                  onClick={() => router.push("/leaderboard")}
+                  className="inline-flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.2em] py-2"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-duel-gold/70" />
+                  Leaderboard
+                </button>
+                <span className="text-muted-foreground/30 py-2">•</span>
+                <button
+                  onClick={() => router.push("/pvp")}
+                  className="inline-flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground hover:text-white transition-colors uppercase tracking-[0.2em] py-2"
+                >
+                  <Users className="w-3.5 h-3.5 text-duel-gold/70" />
+                  PvP
+                </button>
+              </div>
             </>
           ) : (
             <div className="flex flex-col items-center gap-6 w-full">
