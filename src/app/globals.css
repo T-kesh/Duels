@@ -253,4 +253,58 @@ code, .font-mono {
 .animate-shuffle-4 { animation: shuffle-center-col-1-row-1 1.8s cubic-bezier(0.77, 0, 0.175, 1) infinite; }
 .animate-shuffle-5 { animation: shuffle-center-col-2-row-1 1.8s cubic-bezier(0.77, 0, 0.175, 1) infinite; }
 
+/* ── Card Shimmer Utilities ─────────────────────────────────────────────── */
+/* Diagonal highlight sweep used on T2 and T3 cards */
+@keyframes card-shimmer-move {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.card-shimmer-t2 {
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(148, 163, 184, 0.12) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: card-shimmer-move 2.8s linear infinite;
+}
+
+.card-shimmer-t3 {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(252, 196, 25, 0.18) 50%,
+    transparent 65%
+  );
+  background-size: 200% 100%;
+  animation: card-shimmer-move 1.9s linear infinite;
+}
+
+/* T3 pulsing gold border glow */
+.card-t3-glow {
+  box-shadow:
+    0 0 18px rgba(252, 196, 25, 0.25),
+    0 0 4px rgba(252, 196, 25, 0.15) inset;
+  animation: border-glow-pulse 2.2s ease-in-out infinite;
+}
+
+/* Streak fire border */
+.streak-fire-border {
+  animation: streak-fire 1.6s ease-in-out infinite;
+}
+
+/* Impact burst (absolute center overlay) */
+.impact-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(252,196,25,0.9) 0%, rgba(255,255,255,0.4) 40%, transparent 70%);
+  pointer-events: none;
+  animation: impact-burst 0.5s ease-out forwards;
+}
 

@@ -157,6 +157,43 @@ const config: Config = {
           "70%": { transform: "scale(1.15)", opacity: "1" },
           "100%": { transform: "scale(1)", opacity: "1" },
         },
+        "card-shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "border-glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 18px rgba(252,196,25,0.25), inset 0 0 12px rgba(252,196,25,0.04)" },
+          "50%": { boxShadow: "0 0 36px rgba(252,196,25,0.55), inset 0 0 22px rgba(252,196,25,0.1)" },
+        },
+        "card-entrance": {
+          "0%": { transform: "translateY(20px) scale(0.92)", opacity: "0" },
+          "70%": { transform: "translateY(-4px) scale(1.02)", opacity: "1" },
+          "100%": { transform: "translateY(0) scale(1)", opacity: "1" },
+        },
+        "gold-flash": {
+          "0%": { opacity: "0" },
+          "15%": { opacity: "0.35" },
+          "60%": { opacity: "0.1" },
+          "100%": { opacity: "0" },
+        },
+        "streak-fire": {
+          "0%, 100%": { boxShadow: "0 0 8px rgba(249,115,22,0.4), 0 0 20px rgba(249,115,22,0.15)" },
+          "50%": { boxShadow: "0 0 18px rgba(249,115,22,0.8), 0 0 40px rgba(249,115,22,0.35)" },
+        },
+        "eye-flare": {
+          "0%": { transform: "scale(1)", opacity: "1" },
+          "40%": { transform: "scale(1.5)", opacity: "0.9", filter: "brightness(2)" },
+          "100%": { transform: "scale(1)", opacity: "1", filter: "brightness(1)" },
+        },
+        "eye-blink": {
+          "0%, 90%, 100%": { scaleY: "1" },
+          "95%": { scaleY: "0.1" },
+        },
+        "impact-burst": {
+          "0%": { transform: "translate(-50%,-50%) scale(0)", opacity: "1" },
+          "60%": { transform: "translate(-50%,-50%) scale(1.4)", opacity: "0.6" },
+          "100%": { transform: "translate(-50%,-50%) scale(2)", opacity: "0" },
+        },
       },
       animation: {
         pulse: "pulse 1s ease-in-out infinite",
@@ -177,6 +214,13 @@ const config: Config = {
         "rise-in": "rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
         "hero-drop": "hero-drop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both",
         "count-pop": "count-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "border-glow-pulse": "border-glow-pulse 2.2s ease-in-out infinite",
+        "card-entrance": "card-entrance 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "gold-flash": "gold-flash 1.2s ease-out forwards",
+        "streak-fire": "streak-fire 1.6s ease-in-out infinite",
+        "eye-flare": "eye-flare 0.4s ease-out forwards",
+        "eye-blink": "eye-blink 4s ease-in-out infinite",
+        "impact-burst": "impact-burst 0.5s ease-out forwards",
       },
     },
 
