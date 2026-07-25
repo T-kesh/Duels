@@ -1,6 +1,7 @@
 "use client";
 
 import { HpBar } from "@/components/ui/HpBar";
+import { CipherAvatar } from "@/components/ui/CipherAvatar";
 
 interface HealthBarsSectionProps {
   playerHp: number;
@@ -9,6 +10,7 @@ interface HealthBarsSectionProps {
   damageFlash?: { player: number; ai: number } | null;
   healFlash?: { player: number; ai: number } | null;
   clutchTurn?: boolean;
+  isResolving?: boolean;
 }
 
 export function HealthBarsSection({
@@ -18,13 +20,14 @@ export function HealthBarsSection({
   damageFlash,
   healFlash,
   clutchTurn,
+  isResolving = false,
 }: HealthBarsSectionProps) {
   // Fallback to true state HP if visual HP transition state is currently idle/null
   const activePlayerHp = visualHp ? visualHp.player : playerHp;
   const activeAiHp = visualHp ? visualHp.ai : aiHp;
 
   return (
-    <section className="flex gap-4 mb-10 relative">
+    <section className="flex gap-4 mb-10 relative items-end">
       {clutchTurn && (
         <p className="absolute -top-5 left-0 right-0 text-center text-[8px] text-duel-gold tracking-[0.3em] uppercase animate-pulse">
           Clutch turn — +10% damage
@@ -43,8 +46,13 @@ export function HealthBarsSection({
           </span>
         )}
       </div>
+
       <div className="w-[1px] bg-white/5 self-stretch" />
-      <div className="flex-1 relative">
+
+      <div className="flex-1 relative flex flex-col justify-end">
+        <div className="self-end mb-1">
+          <CipherAvatar hp={activeAiHp} isActing={isResolving} />
+        </div>
         <HpBar hp={activeAiHp} label="CIPHER" />
         {damageFlash && damageFlash.ai > 0 && (
           <span className="absolute top-1/2 right-2 -translate-y-1/2 text-destructive text-sm font-bold animate-float-up drop-shadow-[0_0_6px_rgba(255,77,79,0.6)]">
