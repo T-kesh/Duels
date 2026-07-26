@@ -51,7 +51,7 @@ export const CARDS: Card[] = [
     damage: 20,
     shield: 20,
     description: "Balanced play. Deal and absorb.",
-    emoji: "🔄",
+    emoji: "☯️",
   },
   {
     id: "parry",

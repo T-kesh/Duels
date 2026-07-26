@@ -125,12 +125,13 @@ export default function CardsPage() {
         {filteredCards.map((card, idx) => (
           <div
             key={card.id}
-            className="animate-card-entrance"
-            style={{ animationDelay: `${idx * 60}ms` }}
+            className="w-full aspect-[2/3] animate-card-entrance flex"
+            style={{ animationDelay: `${idx * 40}ms` }}
           >
             <CardTile
               card={card}
               onClick={() => setInspectCard(card)}
+              className="w-full h-full"
             />
           </div>
         ))}
