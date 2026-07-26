@@ -10,7 +10,7 @@ export const DUEL_REWARDS_ADDRESS =
  * key off this so they can't drift apart.
  */
 export const DUEL_REWARDS_VERSION =
-  (process.env.NEXT_PUBLIC_DUEL_REWARDS_VERSION || "1") === "2" ? 2 : 1;
+  (process.env.NEXT_PUBLIC_DUEL_REWARDS_VERSION || process.env.DUEL_REWARDS_VERSION || "2") === "1" ? 1 : 2;
 
 export const DUEL_REWARDS_ABI = [
   {
