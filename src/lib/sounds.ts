@@ -221,3 +221,22 @@ export function soundClutchTurn() {
   }, 100);
   haptic([8, 8, 20]);
 }
+
+/** Ascending double-chime for combo trigger. */
+export function playComboSound() {
+  const ac = getCtx();
+  if (!ac) return;
+  playTone(ac, { type: "sine", freq: 440, gain: 0.15, duration: 0.1, attack: 0.005 });
+  setTimeout(() => {
+    const a = getCtx();
+    if (a) playTone(a, { type: "sine", freq: 880, gain: 0.2, duration: 0.2, attack: 0.005 });
+  }, 100);
+  haptic([10, 20]);
+}
+
+/** Rapid shuffling tick sound for card deal. */
+export function playDealSound(pitchMult: number = 1) {
+  const ac = getCtx();
+  if (!ac) return;
+  playTone(ac, { type: "triangle", freq: 300 * pitchMult, gain: 0.08, duration: 0.05, attack: 0.001 });
+}
