@@ -5,6 +5,16 @@ export type RecentDuelResult = {
   playerHp: number;
   aiHp: number;
   at: number;
+  duelId?: string;
+  rewardTier?: string;
+  turns?: {
+    playerCard: string;
+    aiCard: string;
+    playerDmg: number;
+    aiDmg: number;
+    playerCombo?: string;
+    aiCombo?: string;
+  }[];
 };
 
 /** Last N duel outcomes stored locally for CIPHER "memory". */
