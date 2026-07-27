@@ -18,6 +18,7 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
   const [visiblePool, setVisiblePool] = useState<Card[]>([...dealtPool]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [revealTimeLeft, setRevealTimeLeft] = useState(2.0);
+  const [flippedIndices, setFlippedIndices] = useState<Set<number>>(new Set());
 
   // 1. Reveal Countdown
   useEffect(() => {
@@ -38,10 +39,18 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
   // 2. Flip and Shuffle sequence
   useEffect(() => {
     if (step === "flipping") {
-      const timer = setTimeout(() => {
-        setStep("shuffle");
-      }, 500);
-      return () => clearTimeout(timer);
+      let currentIdx = 0;
+      const flipInterval = setInterval(() => {
+        setFlippedIndices(prev => new Set(prev).add(currentIdx));
+        currentIdx++;
+        
+        if (currentIdx >= visiblePool.length) {
+          clearInterval(flipInterval);
+          setTimeout(() => setStep("shuffle"), 400); // slight pause before shuffle
+        }
+      }, 150); // sequential flip delay
+      
+      return () => clearInterval(flipInterval);
     }
 
     if (step === "shuffle") {
@@ -133,7 +142,8 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
       {/* Grid of 6 cards */}
       <div className="grid grid-cols-3 gap-2.5 w-full my-auto max-w-[340px]">
         {visiblePool.map((card, i) => {
-          const isFlipped = step !== "reveal";
+          // If we haven't reached flipping, it's face-up. If we are in flipping, it flips based on index. If past flipping, all flipped.
+          const isFlipped = step === "reveal" ? false : step === "flipping" ? flippedIndices.has(i) : true;
           const isSelected = selectedIds.has(card.id);
           return (
             <div
