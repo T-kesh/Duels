@@ -152,6 +152,7 @@ export async function POST(req: NextRequest) {
       turnsCount: nextState.turns.length,
       lastTurn: nextState.turns[nextState.turns.length - 1] ?? null,
       perfectDuelBonus,
+      rewardTier: session.rewardDecision?.tier,
     };
 
     return NextResponse.json({ card, reasoning, state, nextAiHintType });

@@ -306,6 +306,16 @@ export function useGameState() {
             won: !!nextSnap.playerWon,
             playerHp: nextSnap.playerHp,
             aiHp: nextSnap.aiHp,
+            duelId: duelId || undefined,
+            rewardTier: patch.rewardTier,
+            turns: nextSnap.turns.map((t) => ({
+              playerCard: t.playerCard.id,
+              aiCard: t.aiCard.id,
+              playerDmg: t.playerDamageDealt,
+              aiDmg: t.aiDamageDealt,
+              playerCombo: t.playerCombo,
+              aiCombo: t.aiCombo,
+            })),
           });
         }
 
