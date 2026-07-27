@@ -55,9 +55,9 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
         
         if (currentIdx >= visiblePool.length) {
           clearInterval(flipInterval);
-          setTimeout(() => setStep("shuffle"), 400); // slight pause before shuffle
+          setTimeout(() => setStep("shuffle"), 600); // slight pause before shuffle
         }
-      }, 150); // sequential flip delay
+      }, 200); // sequential flip delay
       
       return () => clearInterval(flipInterval);
     }
