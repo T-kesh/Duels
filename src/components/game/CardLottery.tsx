@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { CardTile } from "@/components/ui/CardTile";
 import { GlowButton } from "@/components/ui/GlowButton";
 import { cn } from "@/lib/utils";
+import { playDealSound, playFlipSound } from "@/lib/sounds";
 import type { Card } from "@/constants/cards";
 
 interface CardLotteryProps {
@@ -24,6 +25,12 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
   // 1. Reveal Countdown
   useEffect(() => {
     if (step !== "reveal") return;
+    
+    // Play deal sound for each card sequentially as they slide up
+    visiblePool.forEach((_, i) => {
+      setTimeout(() => playDealSound(1.0 + i * 0.05), i * 100);
+    });
+
     const interval = setInterval(() => {
       setRevealTimeLeft((prev) => {
         if (prev <= 0.1) {
@@ -43,6 +50,7 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
       let currentIdx = 0;
       const flipInterval = setInterval(() => {
         setFlippedIndices(prev => new Set(prev).add(currentIdx));
+        playFlipSound();
         currentIdx++;
         
         if (currentIdx >= visiblePool.length) {

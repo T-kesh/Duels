@@ -240,3 +240,10 @@ export function playDealSound(pitchMult: number = 1) {
   if (!ac) return;
   playTone(ac, { type: "triangle", freq: 300 * pitchMult, gain: 0.08, duration: 0.05, attack: 0.001 });
 }
+
+/** Swish sound for card flip. */
+export function playFlipSound() {
+  const ac = getCtx();
+  if (!ac) return;
+  playNoise(ac, 0.15, 0.15, 600);
+}
