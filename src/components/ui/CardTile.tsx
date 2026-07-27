@@ -132,8 +132,11 @@ export function CardTile({
     >
       <div
         className={cn(
-          "w-full h-full relative transition-transform duration-500 ease-out [transform-style:preserve-3d]",
-          isFlipped ? "[transform:rotateY(180deg)]" : "[transform:rotateY(0deg)]"
+          "w-full h-full relative transition-transform duration-[700ms] [transform-style:preserve-3d]",
+          isFlipped 
+            ? "[transform:rotateY(180deg)_scale(0.92)]" 
+            : "[transform:rotateY(0deg)_scale(1)]",
+          "[transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]"
         )}
       >
         {/* ── Front Face ───────────────────────────────────────────────────────── */}
