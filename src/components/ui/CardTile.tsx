@@ -38,22 +38,22 @@ const CARD_IDENTITY: Record<
     auraBg: "bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.2)_0%,transparent_70%)]",
   },
   surge: {
-    gradient: "from-amber-950 via-amber-900/70 to-neutral-950",
-    selectedGradient: "from-yellow-900 via-amber-800 to-neutral-900",
-    border: "border-amber-400/60 shadow-[0_0_20px_rgba(245,158,11,0.25)]",
-    emojiGlow: "drop-shadow-[0_0_18px_rgba(250,204,21,1)] animate-pulse",
+    gradient: "from-amber-950 via-amber-700/80 to-yellow-900/60",
+    selectedGradient: "from-yellow-900 via-amber-600 to-amber-900",
+    border: "border-amber-400/80 shadow-[0_0_30px_rgba(245,158,11,0.4)]",
+    emojiGlow: "drop-shadow-[0_0_25px_rgba(250,204,21,1)]",
     nameColor: "text-amber-300",
     accentColor: "text-amber-400",
-    auraBg: "bg-[radial-gradient(circle_at_center,rgba(250,204,21,0.25)_0%,transparent_70%)]",
+    auraBg: "bg-[radial-gradient(ellipse_at_top,rgba(250,204,21,0.4)_0%,transparent_70%)]",
   },
   counter: {
-    gradient: "from-emerald-950 via-teal-900/70 to-neutral-950",
-    selectedGradient: "from-teal-900 via-emerald-800 to-neutral-900",
-    border: "border-teal-400/60 shadow-[0_0_20px_rgba(45,212,191,0.25)]",
-    emojiGlow: "drop-shadow-[0_0_18px_rgba(45,212,191,0.9)]",
-    nameColor: "text-teal-300",
-    accentColor: "text-teal-400",
-    auraBg: "bg-[radial-gradient(circle_at_center,rgba(45,212,191,0.25)_0%,transparent_70%)]",
+    gradient: "from-emerald-950 via-teal-800/80 to-teal-950 bg-[linear-gradient(135deg,rgba(255,255,255,0.1)_0%,transparent_50%,rgba(0,0,0,0.5)_100%)]",
+    selectedGradient: "from-teal-900 via-emerald-700 to-emerald-900",
+    border: "border-teal-300/80 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_0_25px_rgba(45,212,191,0.3)]",
+    emojiGlow: "drop-shadow-[0_0_20px_rgba(45,212,191,0.9)]",
+    nameColor: "text-teal-200",
+    accentColor: "text-teal-300",
+    auraBg: "bg-[radial-gradient(circle_at_center,rgba(45,212,191,0.3)_0%,transparent_60%)]",
   },
   parry: {
     gradient: "from-slate-900 via-slate-800/70 to-neutral-950",
@@ -65,13 +65,13 @@ const CARD_IDENTITY: Record<
     auraBg: "bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.18)_0%,transparent_70%)]",
   },
   drain: {
-    gradient: "from-purple-950 via-fuchsia-950/80 to-neutral-950",
-    selectedGradient: "from-fuchsia-900 via-purple-800 to-neutral-900",
-    border: "border-fuchsia-500/60 shadow-[0_0_20px_rgba(217,70,239,0.3)]",
-    emojiGlow: "drop-shadow-[0_0_20px_rgba(232,121,249,1)] animate-pulse",
-    nameColor: "text-fuchsia-300",
-    accentColor: "text-fuchsia-400",
-    auraBg: "bg-[radial-gradient(circle_at_center,rgba(217,70,239,0.3)_0%,transparent_70%)]",
+    gradient: "from-purple-950 via-fuchsia-900/80 to-purple-950",
+    selectedGradient: "from-fuchsia-900 via-purple-700 to-fuchsia-900",
+    border: "border-fuchsia-400/70 shadow-[0_0_30px_rgba(217,70,239,0.4)]",
+    emojiGlow: "drop-shadow-[0_0_25px_rgba(232,121,249,1)]",
+    nameColor: "text-fuchsia-200",
+    accentColor: "text-fuchsia-300",
+    auraBg: "bg-[radial-gradient(circle_at_center,rgba(217,70,239,0.4)_0%,transparent_70%)]",
   },
 };
 
@@ -174,6 +174,26 @@ export function CardTile({
                 isT3 ? "card-shimmer-t3" : "card-shimmer-t2",
               )}
             />
+          )}
+
+          {/* Depth watermarks */}
+          {baseId(card.id) === "surge" && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none overflow-hidden rounded-xl mix-blend-overlay">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-24 h-24 text-amber-300 rotate-12 scale-150">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+            </div>
+          )}
+          {isDrain && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-xl mix-blend-overlay">
+              {/* Floating plus signs */}
+              <div className="absolute top-2 left-2 text-emerald-400/20 text-xl font-black animate-pulse">+</div>
+              <div className="absolute bottom-6 right-2 text-emerald-400/20 text-lg font-black animate-pulse [animation-delay:400ms]">+</div>
+              <div className="absolute top-10 right-4 text-emerald-400/10 text-2xl font-black animate-pulse [animation-delay:800ms]">+</div>
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-20 h-20 text-fuchsia-300/10 -rotate-12 scale-125">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              </svg>
+            </div>
           )}
 
           {/* Tier badge */}
