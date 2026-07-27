@@ -2,7 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Card, CARDS } from "@/constants/cards";
+import { Card } from "@/constants/cards";
 
 // ── Per-card visual 3D identity ─────────────────────────────────────────────
 // Each card gets a distinct 3D glassmorphic layer, radial background aura,
