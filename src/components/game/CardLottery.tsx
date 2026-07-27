@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { CardTile } from "@/components/ui/CardTile";
 import { GlowButton } from "@/components/ui/GlowButton";
+import { cn } from "@/lib/utils";
 import type { Card } from "@/constants/cards";
 
 interface CardLotteryProps {
@@ -148,7 +149,12 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
           return (
             <div
               key={card.id}
-              className={`transition-all duration-300 transform ${step === "shuffle" ? `animate-shuffle-${i}` : ""}`}
+              className={cn(
+                "transition-all duration-300 transform",
+                step === "shuffle" ? `animate-shuffle-${i}` : "",
+                step === "reveal" && "animate-slide-up",
+              )}
+              style={step === "reveal" ? { animationDelay: `${i * 100}ms`, animationFillMode: "both" } : {}}
             >
               <CardTile
                 card={card}
