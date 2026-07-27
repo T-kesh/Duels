@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { History, X, ChevronRight, Swords, Trophy, Skull } from "lucide-react";
+import { History, X, ChevronRight, Swords, Trophy, Skull, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { readRecentDuels, RecentDuelResult } from "@/lib/recentDuels";
 import { STARTING_HP, CARDS } from "@/constants/cards";
@@ -93,9 +93,10 @@ export function HistoryDrawer({ isOpen, onClose }: HistoryDrawerProps) {
                     <div key={idx} className="relative pl-10">
                       <div className="absolute left-2.5 top-3 w-3 h-3 rounded-full bg-neutral-900 border-2 border-white/20" />
                       
-                      <div className="bg-white/5 border border-white/5 rounded-xl p-3 flex flex-col gap-3">
-                        <div className="text-[9px] font-black text-muted-foreground tracking-widest uppercase">
-                          Turn {idx + 1}
+                      <div className="bg-white/5 border border-white/5 rounded-xl p-3 flex flex-col gap-3 hover:bg-white/10 transition-colors">
+                        <div className="text-[9px] font-black text-muted-foreground tracking-widest uppercase flex items-center justify-between">
+                          <span>Turn {idx + 1}</span>
+                          {turn.playerCombo && <Flame className="w-3 h-3 text-duel-gold" />}
                         </div>
                         
                         <div className="flex justify-between items-center gap-2">
