@@ -110,3 +110,41 @@ describe("pvpGameEngine", () => {
     expect(dk.winnerSlot).toBeNull(); // symmetric double KO -> draw
   });
 });
+
+describe("pvpGameEngine combos", () => {
+  const parry = CARDS.find((c) => c.id === "parry")!;
+
+  it("applies Rush combo bonus damage symmetrically", () => {
+    let s = initPvpState();
+    s = applyPvpRound(s, strike, block);
+    s = applyPvpRound(s, surge, block);
+    expect(s.rounds[1].p1Combo).toBe("Rush");
+    // surge(50 * 1.15) = 57.5 vs block(40) = 17.5. Base would be 10.
+    expect(s.rounds[1].p1DamageDealt).toBeGreaterThan(10);
+  });
+
+  it("applies Fortress combo bonus shield for p2", () => {
+    let s = initPvpState();
+    s = applyPvpRound(s, strike, block);
+    s = applyPvpRound(s, strike, parry);
+    expect(s.rounds[1].p2Combo).toBe("Fortress");
+    // strike(30) vs parry(30+10) = 0 damage
+    expect(s.rounds[1].p1DamageDealt).toBe(0);
+  });
+
+  it("applies Vampiric Rush combo bonus heal for both", () => {
+    let s = initPvpState();
+    s.p1Hp = 50;
+    s.p2Hp = 50;
+    s = applyPvpRound(s, strike, strike);
+    const p1HpBefore = s.p1Hp;
+    s = applyPvpRound(s, drain, drain);
+    expect(s.rounds[1].p1Combo).toBe("Vampiric Rush");
+    expect(s.rounds[1].p2Combo).toBe("Vampiric Rush");
+    
+    // drain vs drain: 25 dmg vs 0 shield.
+    // 75% lifesteal of 25 = 18.
+    // they take 25 damage and heal 18. Net difference is -7.
+    expect(s.p1Hp - p1HpBefore).toBe(-7);
+  });
+});

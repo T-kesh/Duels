@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { AlertTriangle, Shield, Swords, Zap } from "lucide-react";
@@ -13,6 +13,7 @@ import { HealthBarsSection } from "@/components/game/HealthBarsSection";
 import { PlayerHand } from "@/components/game/PlayerHand";
 import { TurnHistory } from "@/components/game/TurnHistory";
 import { CardLottery } from "@/components/game/CardLottery";
+import { HistoryDrawer } from "@/components/ui/HistoryDrawer";
 
 import { useGameState } from "@/hooks/useGameState";
 import { useEnergy } from "@/hooks/useEnergy";
@@ -21,6 +22,7 @@ import { useEnergyTopUp } from "@/hooks/useEnergyTopUp";
 export default function GamePage() {
   const { isConnected } = useAccount();
   const router = useRouter();
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const {
     duelId,
@@ -98,6 +100,7 @@ export default function GamePage() {
         bonusLives={bonusLives}
         maxBaseLives={MAX_LIVES}
         currentTurnDisplay={Math.min(gameState.turn, 3)}
+        onHistoryClick={() => setIsHistoryOpen(true)}
       />
 
       <HealthBarsSection
@@ -198,6 +201,25 @@ export default function GamePage() {
                 {aiCard && (
                   <div className="impact-burst animate-impact-burst [animation-delay:550ms]" />
                 )}
+
+                {/* Player Combo Banner */}
+                {gameState.turns.length > 0 && gameState.turns[gameState.turns.length - 1].playerCombo && (
+                  <div className="absolute top-[30%] left-[-10%] z-50 text-center animate-combo-flash pointer-events-none">
+                    <span className="text-sm font-black text-duel-gold uppercase tracking-widest drop-shadow-[0_0_15px_rgba(252,196,25,0.8)]">
+                      {gameState.turns[gameState.turns.length - 1].playerCombo} COMBO!
+                    </span>
+                  </div>
+                )}
+
+                {/* AI Combo Banner */}
+                {gameState.turns.length > 0 && gameState.turns[gameState.turns.length - 1].aiCombo && (
+                  <div className="absolute top-[30%] right-[-10%] z-50 text-center animate-combo-flash pointer-events-none">
+                    <span className="text-sm font-black text-destructive uppercase tracking-widest drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">
+                      {gameState.turns[gameState.turns.length - 1].aiCombo} COMBO!
+                    </span>
+                  </div>
+                )}
+
                 <div
                   className={cn(
                     "flex justify-around w-full items-center gap-4",
@@ -302,6 +324,8 @@ export default function GamePage() {
           </div>
         </div>
       )}
+
+      <HistoryDrawer isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} />
     </main>
   );
 }

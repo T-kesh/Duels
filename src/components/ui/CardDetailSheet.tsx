@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { X, Swords, Shield, Zap, Info } from "lucide-react";
+import { X, Swords, Shield, Zap, Info, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/constants/cards";
+import { getCombosForCard } from "@/lib/combos";
 
 interface CardDetailSheetProps {
   card: Card | null;
@@ -15,6 +16,7 @@ export function CardDetailSheet({ card, onClose }: CardDetailSheetProps) {
 
   const isT3 = card.tier >= 3;
   const isT2 = card.tier === 2;
+  const combos = getCombosForCard(card.id);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 backdrop-blur-sm animate-fade-in p-4">
@@ -106,6 +108,27 @@ export function CardDetailSheet({ card, onClose }: CardDetailSheetProps) {
             </div>
           )}
         </div>
+
+        {/* Combos */}
+        {combos.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <h4 className="text-[10px] font-bold text-duel-gold tracking-widest uppercase flex items-center gap-1.5">
+              <Flame className="w-3 h-3" />
+              Synergy & Combos
+            </h4>
+            <div className="flex flex-col gap-2">
+              {combos.map((combo) => (
+                <div key={combo.name} className="bg-white/5 border border-white/10 rounded-lg p-2.5 flex items-start gap-2.5">
+                  <div className="text-xl leading-none">{combo.emoji}</div>
+                  <div>
+                    <p className="text-[11px] font-bold text-white tracking-wide uppercase mb-0.5">{combo.name}</p>
+                    <p className="text-[9px] text-muted-foreground leading-snug">{combo.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Info Note */}
         <div className="bg-white/5 border border-white/5 rounded-xl p-3 flex items-start gap-2 text-[10px] text-muted-foreground">

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { CardTile } from "@/components/ui/CardTile";
 import { GlowButton } from "@/components/ui/GlowButton";
+import { cn } from "@/lib/utils";
+import { playDealSound, playFlipSound } from "@/lib/sounds";
 import type { Card } from "@/constants/cards";
 
 interface CardLotteryProps {
@@ -18,10 +20,17 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
   const [visiblePool, setVisiblePool] = useState<Card[]>([...dealtPool]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [revealTimeLeft, setRevealTimeLeft] = useState(2.0);
+  const [flippedIndices, setFlippedIndices] = useState<Set<number>>(new Set());
 
   // 1. Reveal Countdown
   useEffect(() => {
     if (step !== "reveal") return;
+    
+    // Play deal sound for each card sequentially as they slide up
+    visiblePool.forEach((_, i) => {
+      setTimeout(() => playDealSound(1.0 + i * 0.05), i * 100);
+    });
+
     const interval = setInterval(() => {
       setRevealTimeLeft((prev) => {
         if (prev <= 0.1) {
@@ -33,15 +42,24 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
       });
     }, 100);
     return () => clearInterval(interval);
-  }, [step]);
+  }, [step, visiblePool]);
 
   // 2. Flip and Shuffle sequence
   useEffect(() => {
     if (step === "flipping") {
-      const timer = setTimeout(() => {
-        setStep("shuffle");
-      }, 500);
-      return () => clearTimeout(timer);
+      let currentIdx = 0;
+      const flipInterval = setInterval(() => {
+        setFlippedIndices(prev => new Set(prev).add(currentIdx));
+        playFlipSound();
+        currentIdx++;
+        
+        if (currentIdx >= visiblePool.length) {
+          clearInterval(flipInterval);
+          setTimeout(() => setStep("shuffle"), 400); // slight pause before shuffle
+        }
+      }, 150); // sequential flip delay
+      
+      return () => clearInterval(flipInterval);
     }
 
     if (step === "shuffle") {
@@ -67,7 +85,7 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
 
       return () => clearInterval(interval);
     }
-  }, [step]);
+  }, [step, visiblePool.length]);
 
   const handleCardClick = (cardId: string) => {
     if (step !== "pick" || isLoading) return;
@@ -133,12 +151,18 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
       {/* Grid of 6 cards */}
       <div className="grid grid-cols-3 gap-2.5 w-full my-auto max-w-[340px]">
         {visiblePool.map((card, i) => {
-          const isFlipped = step !== "reveal";
+          // If we haven't reached flipping, it's face-up. If we are in flipping, it flips based on index. If past flipping, all flipped.
+          const isFlipped = step === "reveal" ? false : step === "flipping" ? flippedIndices.has(i) : true;
           const isSelected = selectedIds.has(card.id);
           return (
             <div
               key={card.id}
-              className={`transition-all duration-300 transform ${step === "shuffle" ? `animate-shuffle-${i}` : ""}`}
+              className={cn(
+                "transition-all duration-300 transform",
+                step === "shuffle" ? `animate-shuffle-${i}` : "",
+                step === "reveal" && "animate-slide-up",
+              )}
+              style={step === "reveal" ? { animationDelay: `${i * 100}ms`, animationFillMode: "both" } : {}}
             >
               <CardTile
                 card={card}

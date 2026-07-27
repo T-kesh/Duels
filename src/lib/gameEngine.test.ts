@@ -82,3 +82,62 @@ describe("gameEngine", () => {
     expect(state.playerWon).toBe(true);
   });
 });
+
+describe("gameEngine combos", () => {
+  const parry = CARDS.find((c) => c.id === "parry")!;
+
+  it("never triggers combos on turn 1", () => {
+    const state = initGameState();
+    const next = resolveTurn(state, surge, block);
+    expect(next.turns[0].playerCombo).toBeUndefined();
+    expect(next.turns[0].aiCombo).toBeUndefined();
+  });
+
+  it("applies Rush combo bonus damage", () => {
+    let state = initGameState();
+    state = resolveTurn(state, strike, block);
+    state = resolveTurn(state, surge, block);
+    expect(state.turns[1].playerCombo).toBe("Rush");
+    
+    // surge damage = 50 * 1.15 = 57.5
+    // calcDamageDealtUnified(57.5, 40) => 17.5
+    // Base damage without combo would be 50 - 40 = 10
+    expect(state.turns[1].playerDamageDealt).toBeGreaterThan(10);
+  });
+
+  it("applies Fortress combo bonus shield", () => {
+    let state = initGameState();
+    state = resolveTurn(state, block, strike);
+    state = resolveTurn(state, parry, strike);
+    expect(state.turns[1].playerCombo).toBe("Fortress");
+    
+    // parry has 30 shield. +10 bonus = 40.
+    // strike has 30 dmg.
+    // 30 dmg vs 40 shield = 0 damage taken.
+    expect(state.turns[1].aiDamageDealt).toBe(0);
+  });
+
+  it("applies Vampiric Rush combo bonus heal", () => {
+    let state = initGameState();
+    state.playerHp = 50;
+    state = resolveTurn(state, strike, block);
+    const hpBeforeDrain = state.playerHp;
+    state = resolveTurn(state, drain, block);
+    
+    expect(state.turns[1].playerCombo).toBe("Vampiric Rush");
+    
+    // Drain vs block: deals 10 pierce dmg.
+    // Normal heal is 50% of 10 = 5.
+    // Vampiric rush is 75% of 10 = 7.5 -> Math.floor(7.5) = 7.
+    const hpDiff = state.playerHp - hpBeforeDrain;
+    expect(hpDiff).toBe(7);
+  });
+  
+  it("CIPHER also triggers combos", () => {
+    let state = initGameState();
+    state = resolveTurn(state, block, strike);
+    state = resolveTurn(state, block, surge);
+    expect(state.turns[1].aiCombo).toBe("Rush");
+    expect(state.turns[1].aiDamageDealt).toBeGreaterThan(10);
+  });
+});

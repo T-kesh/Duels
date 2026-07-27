@@ -1,5 +1,6 @@
 import { Card, STARTING_HP } from "@/constants/cards";
 import { calcDamageDealtUnified } from "@/lib/combat";
+import { detectCombo } from "@/lib/combos";
 
 export type AiHintType = "attack" | "defend" | "special";
 
@@ -10,6 +11,8 @@ export interface TurnResult {
   aiDamageDealt: number;
   playerHpAfter: number;
   aiHpAfter: number;
+  playerCombo?: string;
+  aiCombo?: string;
 }
 
 export interface GameState {
@@ -49,6 +52,33 @@ export function resolveTurn(
   const isClutchTurn = state.turn === 3;
   const hintHonored = Boolean(aiHintType && aiCard.type === aiHintType);
   
+  let playerComboName: string | undefined;
+  let aiComboName: string | undefined;
+  let playerDmgMultiplier = 1;
+  let playerBonusShield = 0;
+  let playerHealOverride = 0;
+  let aiDmgMultiplier = 1;
+  let aiComboShield = 0;
+  let aiHealOverride = 0;
+
+  if (state.turns.length > 0) {
+    const lastTurn = state.turns[state.turns.length - 1];
+    const pCombo = detectCombo(lastTurn.playerCard, playerCard);
+    if (pCombo) {
+      playerComboName = pCombo.name;
+      playerDmgMultiplier += pCombo.bonusDamagePercent;
+      playerBonusShield += pCombo.bonusShield;
+      playerHealOverride = pCombo.bonusHealOverride;
+    }
+    const aCombo = detectCombo(lastTurn.aiCard, aiCard);
+    if (aCombo) {
+      aiComboName = aCombo.name;
+      aiDmgMultiplier += aCombo.bonusDamagePercent;
+      aiComboShield += aCombo.bonusShield;
+      aiHealOverride = aCombo.bonusHealOverride;
+    }
+  }
+
   // Scale AI hint shield bonus dynamically if AI is using tiered cards
   let aiBonusShield = 0;
   if (hintHonored) {
@@ -61,12 +91,17 @@ export function resolveTurn(
     }
   }
 
-  const playerDamageDealt = calcDamageDealtUnified(playerCard.damage, aiCard.shield, aiBonusShield, isClutchTurn, playerCard.piercing ?? 0);
-  const aiDamageDealt = calcDamageDealtUnified(aiCard.damage, playerCard.shield, 0, isClutchTurn, aiCard.piercing ?? 0);
+  const pDamage = playerCard.damage * playerDmgMultiplier;
+  const aDamage = aiCard.damage * aiDmgMultiplier;
+
+  const playerDamageDealt = calcDamageDealtUnified(pDamage, aiCard.shield, aiBonusShield + aiComboShield, isClutchTurn, playerCard.piercing ?? 0);
+  const aiDamageDealt = calcDamageDealtUnified(aDamage, playerCard.shield, playerBonusShield, isClutchTurn, aiCard.piercing ?? 0);
 
   // Lifesteal calculation (50% of total damage dealt, including pierce)
-  const playerHeal = playerCard.id.startsWith("drain") ? Math.floor(playerDamageDealt * 0.5) : 0;
-  const aiHeal = aiCard.id.startsWith("drain") ? Math.floor(aiDamageDealt * 0.5) : 0;
+  const pHealRate = playerHealOverride > 0 ? playerHealOverride : 0.5;
+  const aHealRate = aiHealOverride > 0 ? aiHealOverride : 0.5;
+  const playerHeal = playerCard.id.startsWith("drain") ? Math.floor(playerDamageDealt * pHealRate) : 0;
+  const aiHeal = aiCard.id.startsWith("drain") ? Math.floor(aiDamageDealt * aHealRate) : 0;
 
   // Apply damage and healing (capped at starting HP)
   const newPlayerHp = Math.min(STARTING_HP, Math.max(0, playerHp - aiDamageDealt + playerHeal));
@@ -89,6 +124,8 @@ export function resolveTurn(
     aiDamageDealt,
     playerHpAfter: newPlayerHp,
     aiHpAfter: newAiHp,
+    playerCombo: playerComboName,
+    aiCombo: aiComboName,
   };
 
   return {

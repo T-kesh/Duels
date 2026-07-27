@@ -71,6 +71,7 @@ export interface ApiPublicState {
   playerWon: boolean | null;
   lastTurn: TurnResult | null;
   perfectDuelBonus?: boolean;
+  rewardTier?: string;
 }
 
 export interface AiMoveResponse {

@@ -1,5 +1,6 @@
 import { Card, STARTING_HP } from "@/constants/cards";
 import { calcDamageDealtUnified } from "@/lib/combat";
+import { detectCombo } from "@/lib/combos";
 
 /**
  * Symmetric two-player duel resolution. Neither side
@@ -26,6 +27,8 @@ export interface PvpResolvedRound extends PvpRoundInput {
   p2DamageDealt: number;
   p1HpAfter: number;
   p2HpAfter: number;
+  p1Combo?: string;
+  p2Combo?: string;
 }
 
 export interface PvpState {
@@ -68,12 +71,44 @@ export function applyPvpRound(state: PvpState, p1Card: Card, p2Card: Card): PvpS
   const round = state.round;
   const clutch = isClutchRound(round);
 
-  const p1DamageDealt = calcDamageDealtUnified(p1Card.damage, p2Card.shield, 0, clutch, p1Card.piercing ?? 0);
-  const p2DamageDealt = calcDamageDealtUnified(p2Card.damage, p1Card.shield, 0, clutch, p2Card.piercing ?? 0);
+  let p1ComboName: string | undefined;
+  let p2ComboName: string | undefined;
+  let p1DmgMultiplier = 1;
+  let p1BonusShield = 0;
+  let p1HealOverride = 0;
+  let p2DmgMultiplier = 1;
+  let p2BonusShield = 0;
+  let p2HealOverride = 0;
+
+  if (state.rounds.length > 0) {
+    const lastRound = state.rounds[state.rounds.length - 1];
+    const p1Combo = detectCombo(lastRound.p1Card, p1Card);
+    if (p1Combo) {
+      p1ComboName = p1Combo.name;
+      p1DmgMultiplier += p1Combo.bonusDamagePercent;
+      p1BonusShield += p1Combo.bonusShield;
+      p1HealOverride = p1Combo.bonusHealOverride;
+    }
+    const p2Combo = detectCombo(lastRound.p2Card, p2Card);
+    if (p2Combo) {
+      p2ComboName = p2Combo.name;
+      p2DmgMultiplier += p2Combo.bonusDamagePercent;
+      p2BonusShield += p2Combo.bonusShield;
+      p2HealOverride = p2Combo.bonusHealOverride;
+    }
+  }
+
+  const p1Damage = p1Card.damage * p1DmgMultiplier;
+  const p2Damage = p2Card.damage * p2DmgMultiplier;
+
+  const p1DamageDealt = calcDamageDealtUnified(p1Damage, p2Card.shield, p2BonusShield, clutch, p1Card.piercing ?? 0);
+  const p2DamageDealt = calcDamageDealtUnified(p2Damage, p1Card.shield, p1BonusShield, clutch, p2Card.piercing ?? 0);
 
   // Lifesteal calculation (50% of total damage dealt, including pierce)
-  const p1Heal = p1Card.id.startsWith("drain") ? Math.floor(p1DamageDealt * 0.5) : 0;
-  const p2Heal = p2Card.id.startsWith("drain") ? Math.floor(p2DamageDealt * 0.5) : 0;
+  const p1HealRate = p1HealOverride > 0 ? p1HealOverride : 0.5;
+  const p2HealRate = p2HealOverride > 0 ? p2HealOverride : 0.5;
+  const p1Heal = p1Card.id.startsWith("drain") ? Math.floor(p1DamageDealt * p1HealRate) : 0;
+  const p2Heal = p2Card.id.startsWith("drain") ? Math.floor(p2DamageDealt * p2HealRate) : 0;
 
   // Apply damage and healing (capped at starting HP)
   const p1Hp = Math.min(STARTING_HP, Math.max(0, state.p1Hp - p2DamageDealt + p1Heal));
@@ -120,6 +155,8 @@ export function applyPvpRound(state: PvpState, p1Card: Card, p2Card: Card): PvpS
     p2DamageDealt,
     p1HpAfter: p1Hp,
     p2HpAfter: p2Hp,
+    p1Combo: p1ComboName,
+    p2Combo: p2ComboName,
   };
 
   return {
