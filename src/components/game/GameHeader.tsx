@@ -1,6 +1,6 @@
 "use client";
 
-import { Zap } from "lucide-react";
+import { Zap, History } from "lucide-react";
 
 interface GameHeaderProps {
   /** Lives from the timed recharge bucket (cap `maxBaseLives`). */
@@ -9,6 +9,7 @@ interface GameHeaderProps {
   bonusLives: number;
   maxBaseLives: number;
   currentTurnDisplay: number;
+  onHistoryClick?: () => void;
 }
 
 export function GameHeader({
@@ -16,6 +17,7 @@ export function GameHeader({
   bonusLives,
   maxBaseLives,
   currentTurnDisplay,
+  onHistoryClick,
 }: GameHeaderProps) {
   const totalPlays = rechargeableLives + bonusLives;
 
@@ -28,6 +30,15 @@ export function GameHeader({
         </span>
       </div>
       <div className="flex gap-2 items-center">
+        {onHistoryClick && (
+          <button 
+            onClick={onHistoryClick}
+            className="px-2 py-1.5 glass border-white/10 rounded-lg hover:bg-white/5 transition-colors text-muted-foreground hover:text-white"
+            title="Battle Log"
+          >
+            <History className="w-4 h-4" />
+          </button>
+        )}
         <div className="px-3 py-1.5 glass border-white/10 rounded-lg flex flex-col gap-0.5 min-w-[4.75rem]">
           <div className="flex items-center gap-1.5 justify-end">
             <Zap className="w-3 h-3 text-duel-gold/80" fill="currentColor" />
