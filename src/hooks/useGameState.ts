@@ -15,6 +15,8 @@ import {
   soundVictory,
   soundDefeat,
   soundPerfectDuel,
+  soundClutchTurn,
+  playComboSound,
 } from "@/lib/sounds";
 
 import type { ApiPublicState } from "@/types/api";
@@ -231,9 +233,14 @@ export function useGameState() {
 
         await new Promise((r) => setTimeout(r, 550));
         soundCardClash();
-        await new Promise((r) => setTimeout(r, 650));
 
         const patch = data.state as ApiPublicState;
+        
+        if (patch.lastTurn?.playerCombo || patch.lastTurn?.aiCombo) {
+          playComboSound();
+        }
+
+        await new Promise((r) => setTimeout(r, 650));
         
         // Calculate intermediate HP after raw damage is applied, before healing heals it back
         const prevHp = gameStateRef.current;

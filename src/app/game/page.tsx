@@ -198,6 +198,25 @@ export default function GamePage() {
                 {aiCard && (
                   <div className="impact-burst animate-impact-burst [animation-delay:550ms]" />
                 )}
+
+                {/* Player Combo Banner */}
+                {gameState.turns.length > 0 && gameState.turns[gameState.turns.length - 1].playerCombo && (
+                  <div className="absolute top-[30%] left-[-10%] z-50 text-center animate-combo-flash pointer-events-none">
+                    <span className="text-sm font-black text-duel-gold uppercase tracking-widest drop-shadow-[0_0_15px_rgba(252,196,25,0.8)]">
+                      {gameState.turns[gameState.turns.length - 1].playerCombo} COMBO!
+                    </span>
+                  </div>
+                )}
+
+                {/* AI Combo Banner */}
+                {gameState.turns.length > 0 && gameState.turns[gameState.turns.length - 1].aiCombo && (
+                  <div className="absolute top-[30%] right-[-10%] z-50 text-center animate-combo-flash pointer-events-none">
+                    <span className="text-sm font-black text-destructive uppercase tracking-widest drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">
+                      {gameState.turns[gameState.turns.length - 1].aiCombo} COMBO!
+                    </span>
+                  </div>
+                )}
+
                 <div
                   className={cn(
                     "flex justify-around w-full items-center gap-4",
