@@ -90,10 +90,6 @@ function baseId(cardId: string): string {
   return cardId.replace(/_t[23]$/, "");
 }
 
-function baseId(cardId: string): string {
-  return cardId.replace(/_t[23]$/, "");
-}
-
 interface CardTileProps {
   card: Card;
   onClick?: () => void;
