@@ -127,6 +127,12 @@ export function CardTile({
   const isT2 = card.tier === 2;
   const isDrain = baseId(card.id) === "drain";
 
+  let vsHint: number | null = null;
+  if (aiHintType === "defend" && card.damage > 0) {
+    const fallbackBlock = 10 + 5; // Base block + hint honor bonus
+    vsHint = Math.max(0, card.damage - fallbackBlock);
+  }
+
   // ── 3D Container ─────────────────────────────────────────────────────────
   return (
     <button
