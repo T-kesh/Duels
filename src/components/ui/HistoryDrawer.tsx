@@ -50,7 +50,94 @@ export function HistoryDrawer({ isOpen, onClose }: HistoryDrawerProps) {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          {history.length === 0 ? (
+          {selectedDuel ? (
+            <div className="space-y-4 animate-fade-in">
+              <button 
+                onClick={() => setSelectedDuel(null)}
+                className="flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-white uppercase tracking-widest transition-colors mb-4"
+              >
+                <ChevronRight className="w-4 h-4 rotate-180" />
+                Back to Log
+              </button>
+              
+              <div className="glass p-4 rounded-xl text-center space-y-1 mb-6">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  {selectedDuel.won ? (
+                    <Trophy className="w-6 h-6 text-duel-gold" />
+                  ) : (
+                    <Skull className="w-6 h-6 text-red-500" />
+                  )}
+                  <h3 className={cn("text-lg font-black uppercase tracking-widest", selectedDuel.won ? "text-duel-gold" : "text-red-500")}>
+                    {selectedDuel.won ? "Victory" : "Defeat"}
+                  </h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Final HP: <span className="text-white font-bold">{selectedDuel.playerHp}</span> / {STARTING_HP}
+                </p>
+                {selectedDuel.rewardTier && (
+                  <p className="text-[10px] text-duel-gold font-bold uppercase tracking-widest mt-2">
+                    Reward Tier: {selectedDuel.rewardTier}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-3 relative">
+                {/* Timeline line */}
+                <div className="absolute left-4 top-2 bottom-2 w-px bg-white/10" />
+
+                {selectedDuel.turns?.map((turn, idx) => {
+                  const pCard = CARDS.find(c => c.id === turn.playerCard);
+                  const aCard = CARDS.find(c => c.id === turn.aiCard);
+                  
+                  return (
+                    <div key={idx} className="relative pl-10">
+                      <div className="absolute left-2.5 top-3 w-3 h-3 rounded-full bg-neutral-900 border-2 border-white/20" />
+                      
+                      <div className="bg-white/5 border border-white/5 rounded-xl p-3 flex flex-col gap-3">
+                        <div className="text-[9px] font-black text-muted-foreground tracking-widest uppercase">
+                          Turn {idx + 1}
+                        </div>
+                        
+                        <div className="flex justify-between items-center gap-2">
+                          {/* Player Side */}
+                          <div className="flex flex-col flex-1 items-start gap-1">
+                            <span className="text-[8px] text-white/40 uppercase tracking-widest">You</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{pCard?.emoji || "?"}</span>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-white">{pCard?.name || turn.playerCard}</span>
+                                {turn.playerCombo && (
+                                  <span className="text-[8px] font-bold text-duel-gold uppercase">{turn.playerCombo} Combo</span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-xs font-mono text-sky-400 mt-1">Dmg: {turn.playerDmg}</span>
+                          </div>
+
+                          <Swords className="w-4 h-4 text-white/20 shrink-0" />
+
+                          {/* AI Side */}
+                          <div className="flex flex-col flex-1 items-end gap-1 text-right">
+                            <span className="text-[8px] text-white/40 uppercase tracking-widest">Cipher</span>
+                            <div className="flex items-center gap-2 flex-row-reverse">
+                              <span className="text-xl">{aCard?.emoji || "?"}</span>
+                              <div className="flex flex-col items-end">
+                                <span className="text-xs font-bold text-white">{aCard?.name || turn.aiCard}</span>
+                                {turn.aiCombo && (
+                                  <span className="text-[8px] font-bold text-destructive uppercase">{turn.aiCombo} Combo</span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-xs font-mono text-red-400 mt-1">Dmg: {turn.aiDmg}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : history.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-50">
               <History className="w-12 h-12 mb-3" />
               <p className="text-sm font-bold tracking-widest uppercase">No battles fought</p>
