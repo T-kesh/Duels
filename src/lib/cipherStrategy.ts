@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { Card } from "@/constants/cards";
 import type { AiHintType } from "@/lib/gameEngine";
+import { detectCombo } from "@/lib/combos";
 
 /**
  * CIPHER's card selection engine.
@@ -52,6 +53,7 @@ interface PickInput {
   /** Hint shown to the player for this pick. */
   hintType: AiHintType;
   playerWins: number;
+  prevAiCard?: Card;
   rng?: () => number;
 }
 
@@ -69,7 +71,16 @@ function scoreCard(card: Card, input: PickInput, avgShield: number, avgDamage: n
   if (playerHp <= card.damage) damageWeight += 0.6; // potential lethal
   if (aiHp <= 35) blockWeight += 0.5;
 
-  return expectedDamage * damageWeight + expectedBlock * blockWeight + 1;
+  let score = expectedDamage * damageWeight + expectedBlock * blockWeight + 1;
+  
+  if (input.prevAiCard) {
+    const combo = detectCombo(input.prevAiCard, card);
+    if (combo) {
+      score *= 1.25; // 25% score boost for combo setup
+    }
+  }
+
+  return score;
 }
 
 /**

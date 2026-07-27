@@ -83,6 +83,10 @@ export async function POST(req: NextRequest) {
     const aiPool = session.cipherPool && session.cipherPool.length > 0
       ? session.cipherPool
       : getTieredPool(playerWins);
+    const prevAiCard = gameState.turns.length > 0
+      ? gameState.turns[gameState.turns.length - 1].aiCard
+      : undefined;
+
     const card = pickCipherCard({
       pool: aiPool,
       playerHp: gameState.playerHp,
@@ -90,6 +94,7 @@ export async function POST(req: NextRequest) {
       turn: gameState.turn,
       hintType: aiHintType,
       playerWins,
+      prevAiCard,
     });
 
     const nextState = resolveTurn(gameState, authoritativeCard, card, aiHintType);
