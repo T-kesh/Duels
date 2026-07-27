@@ -3,7 +3,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { Card, CARDS } from "@/constants/cards";
-import { HINT_SHIELD_BONUS, previewDamage } from "@/lib/gameEngine";
 
 // ── Per-card visual 3D identity ─────────────────────────────────────────────
 // Each card gets a distinct 3D glassmorphic layer, radial background aura,
@@ -91,13 +90,8 @@ function baseId(cardId: string): string {
   return cardId.replace(/_t[23]$/, "");
 }
 
-/** Average shield of base-tier cards that match a given type. */
-function avgShieldForType(type: string): number {
-  const matching = CARDS.filter((c) => c.type === type);
-  if (!matching.length) return 0;
-  return Math.round(
-    matching.reduce((sum, c) => sum + c.shield, 0) / matching.length,
-  );
+function baseId(cardId: string): string {
+  return cardId.replace(/_t[23]$/, "");
 }
 
 interface CardTileProps {

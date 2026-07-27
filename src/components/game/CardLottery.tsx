@@ -42,7 +42,7 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
       });
     }, 100);
     return () => clearInterval(interval);
-  }, [step]);
+  }, [step, visiblePool]);
 
   // 2. Flip and Shuffle sequence
   useEffect(() => {
@@ -85,7 +85,7 @@ export function CardLottery({ dealtPool, onConfirm, isLoading }: CardLotteryProp
 
       return () => clearInterval(interval);
     }
-  }, [step]);
+  }, [step, visiblePool.length]);
 
   const handleCardClick = (cardId: string) => {
     if (step !== "pick" || isLoading) return;
