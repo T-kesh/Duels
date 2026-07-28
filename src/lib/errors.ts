@@ -1,7 +1,7 @@
 import { ApiErrorCode } from "@/types/api";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  [ApiErrorCode.NO_ENERGY]: "Out of energy. Wait for automatic recharge or top up with cUSD.",
+  [ApiErrorCode.NO_ENERGY]: "Out of energy. Wait for automatic recharge or top up with USDm.",
   [ApiErrorCode.RATE_LIMIT_EXCEEDED]: "Rate limit reached. Please wait a few minutes before trying again.",
   [ApiErrorCode.SESSION_EXPIRED]: "Duel session expired (45-minute limit per session). Please start a new duel.",
   [ApiErrorCode.UNKNOWN_OR_EXPIRED_DUEL]: "Duel session not found or expired. Please start a new duel.",
@@ -12,7 +12,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   [ApiErrorCode.MISSING_TX_HASH]: "Transaction hash is required for energy top-up.",
   [ApiErrorCode.INVALID_PLAYER_ADDRESS]: "Invalid player wallet address.",
   [ApiErrorCode.TRANSACTION_NOT_FOUND_OR_FAILED]: "Top-up transaction not found on-chain or failed. Please check Celo explorer.",
-  [ApiErrorCode.TRANSFER_MISMATCH]: "cUSD top-up transfer amount was insufficient or sent to the wrong treasury address.",
+  [ApiErrorCode.TRANSFER_MISMATCH]: "USDm top-up transfer amount was insufficient or sent to the wrong treasury address.",
   [ApiErrorCode.TX_ALREADY_CONSUMED]: "This top-up transaction has already been credited to a player account.",
   [ApiErrorCode.INTERNAL_TOPUP_FAILURE]: "Server top-up processing failed. Please contact support.",
   [ApiErrorCode.AI_MOVE_FAILED]: "CIPHER AI move failed to resolve. Please try playing your turn again.",
@@ -67,7 +67,7 @@ export function getFriendlyErrorMessage(err: unknown, defaultFallback = "An unex
     return "Daily reward claim limit reached (max 5 claims per day).";
   }
   if (lower.includes("insufficient funds") || lower.includes("exceeds balance")) {
-    return "Insufficient cUSD balance in your wallet.";
+    return "Insufficient USDm balance in your wallet.";
   }
 
   return codeStr.length > 120 ? `${codeStr.slice(0, 117)}…` : codeStr;
