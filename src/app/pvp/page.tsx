@@ -276,7 +276,7 @@ function PvpContent() {
           <div className="text-center">
             <p className="text-[11px] text-duel-gold tracking-[0.3em] uppercase mb-2">Creating duel…</p>
             <p className="text-[10px] text-muted-foreground leading-relaxed max-w-[220px]">
-              Approve cUSD spend, then confirm the duel creation in your wallet.
+              Approve USDm spend, then confirm the duel creation in your wallet.
             </p>
           </div>
         </section>
@@ -323,7 +323,7 @@ function PvpContent() {
           <div className="text-center">
             <p className="text-[11px] text-duel-gold tracking-[0.3em] uppercase mb-2">Joining duel…</p>
             <p className="text-[10px] text-muted-foreground leading-relaxed max-w-[220px]">
-              Approve cUSD wager, then confirm the join in your wallet.
+              Approve USDm wager, then confirm the join in your wallet.
             </p>
           </div>
         </section>
@@ -497,7 +497,7 @@ function PvpContent() {
                     <div className="flex justify-between text-[10px]">
                       <span className="text-muted-foreground">Wager</span>
                       <span className="font-mono text-duel-gold">
-                        {Number(parsedJoin.wager) / 1e18} cUSD
+                        {Number(parsedJoin.wager) / 1e18} USDm
                       </span>
                     </div>
                     <div className="flex justify-between text-[10px]">
@@ -560,7 +560,7 @@ function PvpContent() {
           <section className="glass border-white/5 p-5 rounded-xl space-y-3">
             <h2 className="text-[11px] text-duel-gold tracking-[0.3em] uppercase">Create duel</h2>
             <label className="text-[10px] text-muted-foreground uppercase tracking-widest block">
-              Wager (cUSD)
+              Wager (USDm)
             </label>
             <input
               className="w-full px-4 py-3 rounded-xl bg-duel-bg border border-duel-gold/20 font-mono text-sm text-white focus:outline-none focus:border-duel-gold/60 transition-colors"
@@ -597,7 +597,7 @@ function PvpContent() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Wager</span>
-                    <span className="text-white">{Number(parsedJoin.wager) / 1e18} cUSD</span>
+                    <span className="text-white">{Number(parsedJoin.wager) / 1e18} USDm</span>
                   </div>
                 </div>
               )}

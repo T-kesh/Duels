@@ -277,20 +277,24 @@ export function CardTile({
 
         {/* ── Back Face (CIPHER) ───────────────────────────────────────────────── */}
         <div
-          className={cn(
-            "absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] transition-all duration-300 rounded-xl flex flex-col items-center justify-center p-3 text-center border bg-gradient-to-br from-neutral-950 via-neutral-900 to-black border-duel-gold/25 shadow-[0_0_20px_rgba(252,196,25,0.05)]",
-            selected &&
-              "border-duel-gold scale-105 shadow-[0_0_25px_rgba(252,196,25,0.25)] animate-glow",
-            !disabled &&
-              isFlipped &&
-              "hover:border-duel-gold/50 hover:bg-neutral-900/80 hover:-translate-y-1 active:scale-95 active:duration-150 cursor-pointer",
-          )}
+          className="absolute inset-0 w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] rounded-xl"
         >
-          <div className="absolute inset-1.5 border border-white/5 rounded-lg pointer-events-none flex flex-col items-center justify-center">
-            <div className="w-10 h-10 rounded-full border border-duel-gold/15 flex items-center justify-center bg-duel-gold/5 animate-pulse">
-              <span className="text-duel-gold/75 text-xs font-mono font-bold tracking-widest">
-                CIPHER
-              </span>
+          <div
+            className={cn(
+              "w-full h-full transition-all duration-300 rounded-xl flex flex-col items-center justify-center p-3 text-center border bg-gradient-to-br from-neutral-950 via-neutral-900 to-black border-duel-gold/25 shadow-[0_0_20px_rgba(252,196,25,0.05)]",
+              selected &&
+                "border-duel-gold scale-105 shadow-[0_0_25px_rgba(252,196,25,0.25)] animate-glow",
+              !disabled &&
+                isFlipped &&
+                "hover:border-duel-gold/50 hover:bg-neutral-900/80 hover:-translate-y-1 active:scale-95 active:duration-150 cursor-pointer",
+            )}
+          >
+            <div className="absolute inset-1.5 border border-white/5 rounded-lg pointer-events-none flex flex-col items-center justify-center">
+              <div className="w-10 h-10 rounded-full border border-duel-gold/15 flex items-center justify-center bg-duel-gold/5 animate-pulse">
+                <span className="text-duel-gold/75 text-xs font-mono font-bold tracking-widest">
+                  CIPHER
+                </span>
+              </div>
             </div>
           </div>
         </div>

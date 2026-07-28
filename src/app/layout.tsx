@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "DUEL ⚔️ — AI Card Battle on Celo",
   description:
-    "Beat CIPHER, the AI duelist. Earn cUSD rewards. Built for Celo MiniPay.",
+    "Beat CIPHER, the AI duelist. Earn USDm rewards. Built for Celo MiniPay.",
   keywords: ["celo", "minipay", "card game", "ai", "duel", "web3"],
   openGraph: {
     title: "DUEL ⚔️",
