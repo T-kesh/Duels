@@ -5,7 +5,7 @@ import { ApiErrorCode } from "@/types/api";
 describe("getFriendlyErrorMessage", () => {
   it("resolves known ApiErrorCode enum values to human-readable strings", () => {
     expect(getFriendlyErrorMessage(ApiErrorCode.NO_ENERGY)).toBe(
-      "Out of energy. Wait for automatic recharge or top up with cUSD.",
+      "Out of energy. Wait for automatic recharge or top up with USDm.",
     );
     expect(getFriendlyErrorMessage(ApiErrorCode.SESSION_EXPIRED)).toBe(
       "Duel session expired (45-minute limit per session). Please start a new duel.",
